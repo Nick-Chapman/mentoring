@@ -10,16 +10,16 @@ int main() {
   return 0;
 }
 
-// interface...
+// interface types
+typedef std::string identifier;
 class Exp;
 typedef Exp* exp;
-typedef int value;
-typedef std::string identifier;
-
+class Value;
+typedef Value* value;
 class Env;
 typedef Env* env;
 
-// abstract syntax, and proposed future concrete syntax:
+// interface: expression abstract syntax, and proposed future concrete syntax:
 exp num(int);           // 42
 exp add(exp,exp);       // A + B
 exp mul(exp,exp);       // A * B
@@ -28,19 +28,27 @@ exp less(exp,exp);      // A < B
 exp ite(exp,exp,exp);   // (1) if A then B else C  *or*  (2) A ? B : C
 exp var(identifier);    // x
 
+exp str(std::string);   // "foo"
+exp append(exp,exp);    // A ++ B
+
+// interface: values
+value vInt(int);
+std::string showV(value);
+bool equalV(value,value);
+
 // evaluation; pretty-printing
 value eval(exp,env);
 std::string show(exp);
 
 // testing...
-void t2(exp example, env env, int expected) {
+void t2(exp example, env env, value expected) {
   printf("[%s] -> ", show(example).c_str());
-  int actual = eval(example,env);
-  bool pass = actual == expected;
+  value actual = eval(example,env);
+  bool pass = equalV(actual,expected);
   if (pass) {
-    printf("%d\n", actual);
+    printf("%s\n", showV(actual).c_str());
   } else {
-    printf("%d [expect:%d] FAIL\n", actual, expected);
+    printf("%s [expect:%s] FAIL\n", showV(actual).c_str(), showV(expected).c_str());
   }
   //if (!pass) std::abort();
 }
@@ -50,31 +58,32 @@ env emptyEnv();
 env extendEnv(env,identifier,value);
 value lookupEnv(env,identifier);
 
-void t(exp example, int expected) {
+void t(exp example, value expected) {
   t2(example, emptyEnv(), expected);
 }
 
 void test(void) {
-  t( num(42), 42);
-  t( add(num(42),num(3)), 45 );
-  t( mul(num(42),num(3)), 126 );
-  t( sub(num(42),num(3)), 39 );
-  t( sub(num(42),sub(num(10),num(3))), 35 );
-  t( sub(sub(num(42),num(10)),num(3)), 29 );
-  t( less(num(5),num(5)), 0 );
-  t( less(num(5),num(6)), 1 );
-  t( ite (num(1), num(100), num(200)), 100 );
-  t( ite (num(0), num(100), num(200)), 200 );
+  t( num(42), vInt(42));
+  t( add(num(42),num(3)), vInt(45) );
+  //t( add(num(11),num(22)), vInt(77) ); //expect fail
+  t( mul(num(42),num(3)), vInt(126) );
+  t( sub(num(42),num(3)), vInt(39) );
+  t( sub(num(42),sub(num(10),num(3))), vInt(35) );
+  t( sub(sub(num(42),num(10)),num(3)), vInt(29) );
+  t( less(num(5),num(5)), vInt(0) );
+  t( less(num(5),num(6)), vInt(1) );
+  t( ite (num(1), num(100), num(200)), vInt(100) );
+  t( ite (num(0), num(100), num(200)), vInt(200) );
 
-  env env0 = extendEnv(emptyEnv(), "x", 4);
-  env env1 = extendEnv(env0, "y", 7);
-  env env2 = extendEnv(env0, "y", 8);
-  env env3 = extendEnv(env1, "x", 5);
+  env env0 = extendEnv(emptyEnv(), "x", vInt(4));
+  env env1 = extendEnv(env0, "y", vInt(7));
+  env env2 = extendEnv(env0, "y", vInt(8));
+  env env3 = extendEnv(env1, "x", vInt(5));
 
   exp xyExpression = mul(var("x"),var("y"));
-  t2( xyExpression, env1, 28 );
-  t2( xyExpression, env2, 32 );
-  t2( xyExpression, env3, 35 );
+  t2( xyExpression, env1, vInt(28) );
+  t2( xyExpression, env2, vInt(32) );
+  t2( xyExpression, env3, vInt(35) );
 }
 
 
@@ -126,6 +135,44 @@ value lookupEnv(env env,identifier name) {
   return env->lookup(name);
 }
 
+
+// implementation: values...
+
+class Value {
+public:
+  virtual int getInt() = 0;
+  virtual std::string show() = 0;
+  virtual bool isEqualTo(value) = 0;
+};
+
+class ValueInt : public Value {
+  int _n;
+public:
+  ValueInt(int n) :_n(n) {}
+  int getInt() {
+    return _n;
+  }
+  std::string show() {
+    return std::to_string(_n);
+  }
+  bool isEqualTo(value v2) {
+    return _n == v2->getInt();
+  }
+};
+
+// interface: values
+value vInt(int n) {
+  return new ValueInt(n);
+}
+
+std::string showV(value value) {
+  return value->show();
+}
+
+bool equalV(value v1,value v2) {
+  return v1->isEqualTo(v2);
+}
+
 // implementation: expressions...
 
 class Exp {
@@ -147,7 +194,7 @@ class Num : public Exp {
 public:
   Num(int n) : _n(n) {}
   value eval(env env) {
-    return _n;
+    return vInt(_n);
   }
   std::string show() {
     return std::to_string(_n);
@@ -160,7 +207,7 @@ class Add : public Exp {
 public:
   Add(exp x, exp y) : _x(x), _y(y) {}
   value eval(env env) {
-    return _x->eval(env) + _y->eval(env);
+    return vInt(_x->eval(env)->getInt() + _y->eval(env)->getInt());
   }
   std::string show() {
     return std::string("(") + _x->show() + " + " + _y->show() + ")";
@@ -173,7 +220,7 @@ class Mul : public Exp {
 public:
   Mul(exp x, exp y) : _x(x), _y(y) {}
   value eval(env env) {
-    return _x->eval(env) * _y->eval(env);
+    return vInt(_x->eval(env)->getInt() * _y->eval(env)->getInt());
   }
   std::string show() {
     return std::string("(") + _x->show() + " * " + _y->show() + ")";
@@ -186,7 +233,7 @@ class Sub : public Exp {
 public:
   Sub(exp x, exp y) : _x(x), _y(y) {}
   value eval(env env) {
-    return _x->eval(env) - _y->eval(env);
+    return vInt(_x->eval(env)->getInt() - _y->eval(env)->getInt());
   }
   std::string show() {
     return std::string("(") + _x->show() + " - " + _y->show() + ")";
@@ -199,7 +246,7 @@ class LessThan : public Exp {
 public:
   LessThan(exp x, exp y) : _x(x), _y(y) {}
   value eval(env env) {
-    return _x->eval(env) < _y->eval(env) ? 1 : 0;
+    return vInt(_x->eval(env)->getInt() < _y->eval(env)->getInt() ? 1 : 0);
   }
   std::string show() {
     return std::string("(") + _x->show() + " < " + _y->show() + ")";
@@ -213,7 +260,7 @@ class IfThenElse : public Exp {
 public:
   IfThenElse(exp i, exp t, exp e) : _i(i), _t(t), _e(e) {}
   value eval(env env) {
-    if (_i->eval(env) == 1) {
+    if (_i->eval(env)->getInt() == 1) {
       return _t->eval(env);
     } else {
       return _e->eval(env);
