@@ -14,12 +14,17 @@ int main() {
 class Exp;
 typedef Exp* exp;
 typedef int value;
+
+// abstract syntax, and proposed future concrete syntax:
+exp num(int);           // 42
+exp add(exp,exp);       // A + B
+exp mul(exp,exp);       // A * B
+exp sub(exp,exp);       // A - B
+exp less(exp,exp);      // A < B
+exp ite(exp,exp,exp);   // (1) if A then B else C  *or*  (2) A ? B : C
+
+// evaluation; pretty-printing
 value eval(exp);
-exp num(int);
-exp add(exp,exp);
-exp sub(exp,exp);
-exp less(exp,exp);
-exp ite(exp,exp,exp);
 std::string show(exp);
 
 // testing...
@@ -38,22 +43,15 @@ void t(exp example, int expected) {
 void test(void) {
   t( num(42), 42);
   t( add(num(42),num(3)), 45 );
+  t( mul(num(42),num(3)), 126 );
   t( sub(num(42),num(3)), 39 );
   t( sub(num(42),sub(num(10),num(3))), 35 );
   t( sub(sub(num(42),num(10)),num(3)), 29 );
-
   t( less(num(5),num(5)), 0 );
   t( less(num(5),num(6)), 1 );
   t( ite (num(1), num(100), num(200)), 100 );
   t( ite (num(0), num(100), num(200)), 200 );
-
 }
-
-/*value eval(exp) { return 99; }
-std::string show(exp) { return "SHOW"; }
-exp num(int) { return 0; }
-exp add(exp ,exp) { return 0; }
-exp sub(exp ,exp) { return 0; }*/
 
 // implementation...
 
@@ -93,6 +91,19 @@ public:
   }
   std::string show() {
     return std::string("(") + _x->show() + " + " + _y->show() + ")";
+  }
+};
+
+class Mul : public Exp {
+  exp _x;
+  exp _y;
+public:
+  Mul(exp x, exp y) : _x(x), _y(y) {}
+  value eval() {
+    return _x->eval() * _y->eval();
+  }
+  std::string show() {
+    return std::string("(") + _x->show() + " * " + _y->show() + ")";
   }
 };
 
@@ -143,6 +154,7 @@ public:
 
 exp num(int n) { return new Num(n); }
 exp add(exp x ,exp y) { return new Add(x,y); }
+exp mul(exp x ,exp y) { return new Mul(x,y); }
 exp sub(exp x ,exp y) { return new Sub(x,y); }
 exp less(exp x ,exp y) { return new LessThan(x,y); }
 exp ite(exp i ,exp t, exp e) { return new IfThenElse(i,t,e); }
