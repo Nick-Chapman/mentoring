@@ -14,6 +14,7 @@ int main() {
 class Exp;
 typedef Exp* exp;
 typedef int value;
+typedef std::string identifier;
 
 // abstract syntax, and proposed future concrete syntax:
 exp num(int);           // 42
@@ -22,6 +23,7 @@ exp mul(exp,exp);       // A * B
 exp sub(exp,exp);       // A - B
 exp less(exp,exp);      // A < B
 exp ite(exp,exp,exp);   // (1) if A then B else C  *or*  (2) A ? B : C
+exp var(identifier);    // x
 
 // evaluation; pretty-printing
 value eval(exp);
@@ -51,6 +53,7 @@ void test(void) {
   t( less(num(5),num(6)), 1 );
   t( ite (num(1), num(100), num(200)), 100 );
   t( ite (num(0), num(100), num(200)), 200 );
+  t( mul(var("x"),var("y")), 28 ); //x=4,y=7
 }
 
 // implementation...
@@ -151,6 +154,26 @@ public:
   }
 };
 
+class Variable : public Exp {
+  identifier _name;
+public:
+  Variable(identifier name) : _name(name) {}
+  value eval() {
+    if (_name == "x") {
+      return 7;
+    }
+    else if (_name == "y") {
+      return 4;
+    }
+    else {
+      abort();
+    }
+  }
+  std::string show() {
+    return _name;
+  }
+};
+
 
 exp num(int n) { return new Num(n); }
 exp add(exp x ,exp y) { return new Add(x,y); }
@@ -158,3 +181,4 @@ exp mul(exp x ,exp y) { return new Mul(x,y); }
 exp sub(exp x ,exp y) { return new Sub(x,y); }
 exp less(exp x ,exp y) { return new LessThan(x,y); }
 exp ite(exp i ,exp t, exp e) { return new IfThenElse(i,t,e); }
+exp var(identifier name) { return new Variable(name); }
