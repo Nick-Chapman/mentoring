@@ -33,6 +33,7 @@ exp append(exp,exp);    // A ++ B
 
 // interface: values
 value vInt(int);
+value vString(std::string);
 std::string showV(value);
 bool equalV(value,value);
 
@@ -84,6 +85,9 @@ void test(void) {
   t2( xyExpression, env1, vInt(28) );
   t2( xyExpression, env2, vInt(32) );
   t2( xyExpression, env3, vInt(35) );
+
+  t( str("foo"), vString("foo") );
+  t( append(str("foo"),str("bar")), vString("foobar") );
 }
 
 
@@ -141,6 +145,7 @@ value lookupEnv(env env,identifier name) {
 class Value {
 public:
   virtual int getInt() = 0;
+  virtual std::string getString() = 0;
   virtual std::string show() = 0;
   virtual bool isEqualTo(value) = 0;
 };
@@ -152,6 +157,10 @@ public:
   int getInt() {
     return _n;
   }
+  std::string getString() {
+    crash("ValueInt::getString()");
+    return "oops!";
+  }
   std::string show() {
     return std::to_string(_n);
   }
@@ -160,9 +169,33 @@ public:
   }
 };
 
+class ValueString : public Value {
+  std::string _s;
+public:
+  ValueString(std::string s) :_s(s) {}
+  int getInt() {
+    crash("ValueString::getInt()");
+    return 0;
+  }
+  std::string getString() {
+    return _s;
+  }
+  std::string show() {
+    return std::string("\"") + _s + std::string("\"");
+  }
+  bool isEqualTo(value v2) {
+    return _s == v2->getString();
+  }
+};
+
+
 // interface: values
 value vInt(int n) {
   return new ValueInt(n);
+}
+
+value vString(std::string s) {
+  return new ValueString(s);
 }
 
 std::string showV(value value) {
@@ -198,6 +231,18 @@ public:
   }
   std::string show() {
     return std::to_string(_n);
+  }
+};
+
+class String : public Exp {
+  std::string _s;
+public:
+  String(std::string s) : _s(s) {}
+  value eval(env env) {
+    return vString(_s);
+  }
+  std::string show() {
+    return std::string("\"") + _s + std::string("\"");
   }
 };
 
@@ -283,11 +328,26 @@ public:
   }
 };
 
+class Append : public Exp {
+  exp _x;
+  exp _y;
+public:
+  Append(exp x, exp y) : _x(x), _y(y) {}
+  value eval(env env) {
+    return vString(_x->eval(env)->getString() + _y->eval(env)->getString());
+  }
+  std::string show() {
+    return std::string("(") + _x->show() + " ++ " + _y->show() + ")";
+  }
+};
+
 
 exp num(int n) { return new Num(n); }
+exp str(std::string s) { return new String(s); }
 exp add(exp x ,exp y) { return new Add(x,y); }
 exp mul(exp x ,exp y) { return new Mul(x,y); }
 exp sub(exp x ,exp y) { return new Sub(x,y); }
 exp less(exp x ,exp y) { return new LessThan(x,y); }
 exp ite(exp i ,exp t, exp e) { return new IfThenElse(i,t,e); }
 exp var(identifier name) { return new Variable(name); }
+exp append(exp a,exp b) { return new Append(a,b); }
