@@ -1,8 +1,5 @@
 
-top: start.o run
-
-start.o: start.C
-	gcc -Wall -Werror $< -c -o $@
+top: run
 
 run: cint.exe
 	./cint.exe
