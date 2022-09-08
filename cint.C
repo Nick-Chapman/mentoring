@@ -27,9 +27,9 @@ exp sub(exp,exp);       // A - B
 exp less(exp,exp);      // A < B
 exp ite(exp,exp,exp);   // (1) if A then B else C  *or*  (2) A ? B : C
 exp var(identifier);    // x
-
 exp str(std::string);   // "foo"
 exp append(exp,exp);    // A ++ B
+exp let(identifier,exp,exp); // let X = RHS in BODY
 
 // interface: values
 value vInt(int);
@@ -88,6 +88,9 @@ void test(void) {
 
   t( str("foo"), vString("foo") );
   t( append(str("foo"),str("bar")), vString("foobar") );
+
+  t ( let("x", add(num(39),num(3)), add(num(100),var("x"))), vInt(142) );
+  t ( let ("x", num(3), let("x", mul(var("x"),var("x")), mul(var("x"),var("x")))), vInt(81) );
 }
 
 
@@ -312,7 +315,23 @@ public:
     }
   }
   std::string show() {
-    return std::string("(if ") + _i->show() + " then " + _t->show() + " else " + _e->show() + ")";
+    return "(if " + _i->show() + " then " + _t->show() + " else " + _e->show() + ")";
+  }
+};
+
+class LetExpression : public Exp {
+  identifier _x;
+  exp _rhs;
+  exp _body;
+public:
+  LetExpression(identifier x, exp rhs, exp body) : _x(x), _rhs(rhs), _body(body) {}
+  value eval(env env0) {
+    value rhsValue = _rhs->eval(env0);
+    env env1 = extendEnv(env0, _x, rhsValue);
+    return _body->eval(env1);
+  }
+  std::string show() {
+    return "let " + _x + " = " + _rhs->show() + " in " + _body->show();
   }
 };
 
@@ -351,3 +370,4 @@ exp less(exp x ,exp y) { return new LessThan(x,y); }
 exp ite(exp i ,exp t, exp e) { return new IfThenElse(i,t,e); }
 exp var(identifier name) { return new Variable(name); }
 exp append(exp a,exp b) { return new Append(a,b); }
+exp let(identifier x,exp r,exp b) { return new LetExpression(x,r,b); }
