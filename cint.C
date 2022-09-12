@@ -3,15 +3,17 @@
 #include <string>
 
 static void test(void);
+static void testPrograms(void);
 
 int main() {
   printf("**c-interpreter\n");
   test();
+  testPrograms();
   return 0;
 }
 
 // interface types
-typedef std::string identifier;
+typedef std::string identifier; //TODO: rename -> "name"
 class Exp;
 typedef Exp* exp;
 class Value;
@@ -19,7 +21,9 @@ typedef Value* value;
 class Env;
 typedef Env* env;
 
-// interface: expression abstract syntax, and proposed future concrete syntax:
+// interface...
+
+// expression abstract syntax, and proposed future concrete syntax:
 exp num(int);           // 42
 exp add(exp,exp);       // A + B
 exp mul(exp,exp);       // A * B
@@ -30,6 +34,7 @@ exp var(identifier);    // x
 exp str(std::string);   // "foo"
 exp append(exp,exp);    // A ++ B
 exp let(identifier,exp,exp); // let X = RHS in BODY
+exp call1(identifier f,exp arg); // f(arg)
 
 // interface: values
 value vInt(int);
@@ -40,6 +45,23 @@ bool equalV(value,value);
 // evaluation; pretty-printing
 value eval(exp,env);
 std::string show(exp);
+
+
+// interface: definitions and programs
+
+class Program;
+typedef Program* program;
+class Defs;
+typedef Defs* defs;
+class Def;
+typedef Def* def;
+
+program makeProgram(defs, exp main);
+defs nilDefs();
+defs consDefs(def,defs);
+def def1(identifier name, identifier arg, exp body);
+value execute(program);
+
 
 // testing...
 void t2(exp example, env env, value expected) {
@@ -94,10 +116,63 @@ void test(void) {
 }
 
 
+defs allDefs() {
+/*
+  def square(x): x*x
+
+  def fact(x):
+    if x < 1:
+      1
+    else:
+      x * fact (n-1)
+
+  def fib(x):
+    if (x < 2) then 1 else fib(n-1) + fib(n-2)
+*/
+
+  def squareDef =
+    def1("square","x",
+         mul(var("x"),var("x")));
+  def factorialDef =
+    def1("fact","x",
+         ite (less(var("x"),num(1)),
+              num(1),
+              mul(var("x"),call1("fact",sub(var("x"),num(1))))));
+  def fibDef =
+    def1("fib","x",
+         ite (less(var("x"),num(2)),
+              num(1),
+              add(call1("fib",sub(var("x"),num(1))),
+                  call1("fib",sub(var("x"),num(2))))));
+  return
+    consDefs(factorialDef,
+    consDefs(squareDef,
+    consDefs(fibDef,
+    nilDefs())));
+}
+
+void tp(exp mainExp) {
+  defs defs = allDefs();
+  program theProg = makeProgram(defs,mainExp);
+  value res = execute(theProg);
+  printf("%s --> %s\n", show(mainExp).c_str(), showV(res).c_str());
+}
+
+void testPrograms(void) {
+  printf("**testPrograms...\n");
+  tp(call1("fact",num(5)));
+  tp(call1("fact",call1("fact",num(3))));
+  tp(call1("square",call1("fact",num(3))));
+  tp(call1("fact",call1("square",num(3))));
+  tp(call1("fib",num(10)));
+  tp(call1("fib",num(20)));
+}
+
+
 void crash(std::string mes) {
   printf("CRASH: %s\n", mes.c_str());
   fflush(stdout);
-  std::abort();
+  abort();
 }
 
 // implementation: environments...
@@ -111,7 +186,7 @@ class EmptyEnv : public Env {
 public:
   value lookup(identifier name) {
     printf("CRASH: EmptyEnv.lookup(%s)\n", name.c_str());
-    crash("EmptyEnv.lookup");
+    abort();
     return 0;
   }
 };
@@ -213,12 +288,12 @@ bool equalV(value v1,value v2) {
 
 class Exp {
 public:
-  virtual value eval(env) = 0;
+  virtual value eval(defs,env) = 0;
   virtual std::string show() = 0;
 };
 
 value eval(exp exp, env env) {
-  return exp->eval(env);
+  return exp->eval(nilDefs(), env);
 }
 
 std::string show(exp e) {
@@ -229,7 +304,7 @@ class Num : public Exp {
   int _n;
 public:
   Num(int n) : _n(n) {}
-  value eval(env env) {
+  value eval(defs defs, env env) {
     return vInt(_n);
   }
   std::string show() {
@@ -241,7 +316,7 @@ class String : public Exp {
   std::string _s;
 public:
   String(std::string s) : _s(s) {}
-  value eval(env env) {
+  value eval(defs defs, env env) {
     return vString(_s);
   }
   std::string show() {
@@ -254,8 +329,8 @@ class Add : public Exp {
   exp _y;
 public:
   Add(exp x, exp y) : _x(x), _y(y) {}
-  value eval(env env) {
-    return vInt(_x->eval(env)->getInt() + _y->eval(env)->getInt());
+  value eval(defs defs, env env) {
+    return vInt(_x->eval(defs,env)->getInt() + _y->eval(defs,env)->getInt());
   }
   std::string show() {
     return std::string("(") + _x->show() + " + " + _y->show() + ")";
@@ -267,8 +342,8 @@ class Mul : public Exp {
   exp _y;
 public:
   Mul(exp x, exp y) : _x(x), _y(y) {}
-  value eval(env env) {
-    return vInt(_x->eval(env)->getInt() * _y->eval(env)->getInt());
+  value eval(defs defs, env env) {
+    return vInt(_x->eval(defs,env)->getInt() * _y->eval(defs,env)->getInt());
   }
   std::string show() {
     return std::string("(") + _x->show() + " * " + _y->show() + ")";
@@ -280,8 +355,8 @@ class Sub : public Exp {
   exp _y;
 public:
   Sub(exp x, exp y) : _x(x), _y(y) {}
-  value eval(env env) {
-    return vInt(_x->eval(env)->getInt() - _y->eval(env)->getInt());
+  value eval(defs defs, env env) {
+    return vInt(_x->eval(defs,env)->getInt() - _y->eval(defs,env)->getInt());
   }
   std::string show() {
     return std::string("(") + _x->show() + " - " + _y->show() + ")";
@@ -293,8 +368,8 @@ class LessThan : public Exp {
   exp _y;
 public:
   LessThan(exp x, exp y) : _x(x), _y(y) {}
-  value eval(env env) {
-    return vInt(_x->eval(env)->getInt() < _y->eval(env)->getInt() ? 1 : 0);
+  value eval(defs defs, env env) {
+    return vInt(_x->eval(defs,env)->getInt() < _y->eval(defs,env)->getInt() ? 1 : 0);
   }
   std::string show() {
     return std::string("(") + _x->show() + " < " + _y->show() + ")";
@@ -307,11 +382,11 @@ class IfThenElse : public Exp {
   exp _e;
 public:
   IfThenElse(exp i, exp t, exp e) : _i(i), _t(t), _e(e) {}
-  value eval(env env) {
-    if (_i->eval(env)->getInt() == 1) {
-      return _t->eval(env);
+  value eval(defs defs, env env) {
+    if (_i->eval(defs,env)->getInt() == 1) {
+      return _t->eval(defs,env);
     } else {
-      return _e->eval(env);
+      return _e->eval(defs,env);
     }
   }
   std::string show() {
@@ -325,10 +400,10 @@ class LetExpression : public Exp {
   exp _body;
 public:
   LetExpression(identifier x, exp rhs, exp body) : _x(x), _rhs(rhs), _body(body) {}
-  value eval(env env0) {
-    value rhsValue = _rhs->eval(env0);
+  value eval(defs defs, env env0) {
+    value rhsValue = _rhs->eval(defs,env0);
     env env1 = extendEnv(env0, _x, rhsValue);
-    return _body->eval(env1);
+    return _body->eval(defs,env1);
   }
   std::string show() {
     return "let " + _x + " = " + _rhs->show() + " in " + _body->show();
@@ -339,7 +414,7 @@ class Variable : public Exp {
   identifier _name;
 public:
   Variable(identifier name) : _name(name) {}
-  value eval(env env) {
+  value eval(defs defs, env env) {
     return lookupEnv(env,_name);
   }
   std::string show() {
@@ -352,8 +427,8 @@ class Append : public Exp {
   exp _y;
 public:
   Append(exp x, exp y) : _x(x), _y(y) {}
-  value eval(env env) {
-    return vString(_x->eval(env)->getString() + _y->eval(env)->getString());
+  value eval(defs defs, env env) {
+    return vString(_x->eval(defs,env)->getString() + _y->eval(defs,env)->getString());
   }
   std::string show() {
     return std::string("(") + _x->show() + " ++ " + _y->show() + ")";
@@ -371,3 +446,102 @@ exp ite(exp i ,exp t, exp e) { return new IfThenElse(i,t,e); }
 exp var(identifier name) { return new Variable(name); }
 exp append(exp a,exp b) { return new Append(a,b); }
 exp let(identifier x,exp r,exp b) { return new LetExpression(x,r,b); }
+
+
+// implementation: definitions and programs
+
+class Defs {
+public:
+  virtual def findDef(identifier) = 0;
+};
+
+class Def {
+public:
+  virtual identifier getName() = 0;
+  virtual value apply(defs,value) = 0;
+};
+
+class NilDefs : public Defs {
+public:
+  NilDefs() {}
+  def findDef(identifier name) {
+    printf("CRASH: NilDefs.findDef(%s)\n", name.c_str());
+    abort();
+    return 0;
+  }
+};
+
+class ConsDefs : public Defs {
+  def _first;
+  defs _more;
+public:
+  ConsDefs(def d1,defs ds) : _first(d1), _more(ds) {}
+  def findDef(identifier sought) {
+    if (_first->getName() == sought) {
+      return _first;
+    } else {
+      return _more->findDef(sought);
+    }
+  }
+};
+
+class Call1 : public Exp {
+  identifier _func;
+  exp _arg;
+public:
+  Call1(identifier f, exp a) : _func(f), _arg(a) {}
+  value eval(defs defs, env env) {
+    def called = defs->findDef(_func);
+    value v = _arg->eval(defs,env);
+    return called->apply(defs,v);
+  }
+  std::string show() {
+    return _func + "(" + _arg->show() + ")";
+  }
+};
+
+class Def1 : public Def {
+private:
+  identifier _name;
+  identifier _formal;
+  exp _body;
+public:
+  Def1(identifier name, identifier formal, exp body)
+    : _name(name), _formal(formal), _body(body) {}
+  identifier getName() { return _name; }
+  value apply(defs defs, value actual) {
+    //printf("Def1.apply\n");
+    env env = extendEnv(emptyEnv(),_formal,actual);
+    return _body->eval(defs,env);
+  }
+};
+
+class Program {
+  defs _theDefs;
+  exp _mainExp;
+public:
+  Program(defs ds, exp e) : _theDefs(ds), _mainExp(e) {}
+  value execute() {
+    return _mainExp->eval(_theDefs,emptyEnv());
+  }
+};
+
+
+exp call1(identifier f,exp arg) {
+  return new Call1(f,arg);
+}
+def def1(identifier name, identifier arg, exp body) {
+  return new Def1(name,arg,body);
+}
+defs nilDefs() {
+  return new NilDefs();
+}
+defs consDefs(def d1,defs ds) {
+  return new ConsDefs(d1,ds);
+}
+program makeProgram(defs ds, exp main) {
+  return new Program(ds,main);
+}
+value execute(program p) {
+  return p->execute();
+}
