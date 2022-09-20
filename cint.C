@@ -2,13 +2,33 @@
 #include <stdio.h>
 #include <string>
 
-static void test(void);
-static void testPrograms(void);
+#include "lexer.h"
+
+void test(void);
+void testPrograms(void);
+
+void test_lexer(void) {
+
+  // TODO: read program string from file
+  //LexState ls = LexState("  ((5 * foo11++ bar**123 45  \n\t )(");
+  LexState ls = LexState("def fib(x):\n if (x < 2) then 1 else fib(n-1) + fib(n-2) the iff if+ if1 ii ix ");
+
+  int i = 0;
+  Token tok = ls.get_token();
+  while (tok.kind() != NoMoreTokens) {
+    printf("%2d) %02d-%02d '%s' %s \n", i,
+           tok.startPos(), tok.endPos(), tok.text().c_str(), showKind(tok.kind()).c_str());
+    i++;
+    tok = ls.get_token();
+  }
+}
+
 
 int main() {
   printf("**c-interpreter\n");
-  test();
-  testPrograms();
+  //test();
+  //testPrograms();
+  test_lexer();
   return 0;
 }
 
