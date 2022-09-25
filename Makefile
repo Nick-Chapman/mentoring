@@ -1,14 +1,14 @@
 
 top: run
 
-run: cint.exe
-	./cint.exe
+run: cint.exe Makefile
+	./cint.exe -test-lex
 
 cint.exe: cint.o lexer.o
-	gcc $^ -l stdc++ -o $@
+	g++ $^ -o $@
 
 cint.o: cint.C lexer.h
-	gcc -Wall -Werror $< -c -o $@
+	g++ -Wall -Werror $< -c -o $@
 
 lexer.o: lexer.C lexer.h
-	gcc -Wall -Werror $< -c -o $@
+	g++ -Wall -Werror $< -c -o $@

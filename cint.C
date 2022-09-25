@@ -4,14 +4,38 @@
 
 #include "lexer.h"
 
-void test(void);
-void testPrograms(void);
+void test_exp_ast(void);
+void test_prog_ast(void);
+void test_lexer(void);
+
+int main(int argc, char* argv[]) {
+
+  bool run_test_exp_ast = false;
+  bool run_test_prog_ast = false;
+  bool run_test_lexer = false;
+
+  for (int i = 1; i < argc; i++) {
+    std::string arg = argv[i];
+    if (arg == "-test-exp") run_test_exp_ast = true;
+    if (arg == "-test-prog") run_test_prog_ast = true;
+    if (arg == "-test-lex") run_test_lexer = true;
+    if (arg == "-test") {
+      run_test_exp_ast = true;
+      run_test_prog_ast = true;
+      run_test_lexer = true;
+    }
+  }
+  if (run_test_exp_ast) test_exp_ast();
+  if (run_test_prog_ast) test_prog_ast();
+  if (run_test_lexer) test_lexer();
+  return 0;
+}
 
 void test_lexer(void) {
 
   // TODO: read program string from file
-  //LexState ls = LexState("  ((5 * foo11++ bar**123 45  \n\t )(");
-  LexState ls = LexState("def fib(x):\n if (x < 2) then 1 else fib(n-1) + fib(n-2) the iff if+ if1 ii ix ");
+  LexState ls =
+    LexState("def fib(x):\n if (x < 2) then 1 else fib(x-1) + fib(x-2) ");
 
   int i = 0;
   Token tok = ls.get_token();
@@ -23,14 +47,6 @@ void test_lexer(void) {
   }
 }
 
-
-int main() {
-  printf("**c-interpreter\n");
-  //test();
-  //testPrograms();
-  test_lexer();
-  return 0;
-}
 
 // interface types
 typedef std::string identifier; //TODO: rename -> "name"
@@ -83,6 +99,12 @@ def def1(identifier name, identifier arg, exp body);
 value execute(program);
 
 
+void crash(std::string mes) {
+  printf("CRASH: %s\n", mes.c_str());
+  fflush(stdout);
+  abort();
+}
+
 // testing...
 void t2(exp example, env env, value expected) {
   printf("[%s] -> ", show(example).c_str());
@@ -93,7 +115,7 @@ void t2(exp example, env env, value expected) {
   } else {
     printf("%s [expect:%s] FAIL\n", showV(actual).c_str(), showV(expected).c_str());
   }
-  //if (!pass) std::abort();
+  if (!pass) crash("test failed: " + show(example));
 }
 
 // interface: environments...
@@ -105,7 +127,7 @@ void t(exp example, value expected) {
   t2(example, emptyEnv(), expected);
 }
 
-void test(void) {
+void test_exp_ast(void) {
   t( num(42), vInt(42));
   t( add(num(42),num(3)), vInt(45) );
   //t( add(num(11),num(22)), vInt(77) ); //expect fail
@@ -178,7 +200,7 @@ void tp(exp mainExp) {
   printf("%s --> %s\n", show(mainExp).c_str(), showV(res).c_str());
 }
 
-void testPrograms(void) {
+void test_prog_ast(void) {
   printf("**testPrograms...\n");
   tp(call1("fact",num(5)));
   tp(call1("fact",call1("fact",num(3))));
@@ -188,12 +210,6 @@ void testPrograms(void) {
   tp(call1("fib",num(20)));
 }
 
-
-void crash(std::string mes) {
-  printf("CRASH: %s\n", mes.c_str());
-  fflush(stdout);
-  abort();
-}
 
 // implementation: environments...
 
