@@ -1,3 +1,6 @@
+#ifndef AST_H
+#define AST_H
+
 #include <string>
 
 // types
@@ -47,5 +50,8 @@ value lookupEnv(env,name);
 
 // pretty-printing, evaluation, execution
 std::string show(exp e);
+std::string showProgram(program);
 value eval(exp,env);
 value execute(program);
+
+#endif

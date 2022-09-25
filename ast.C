@@ -283,11 +283,13 @@ exp let(name x,exp r,exp b) { return new LetExpression(x,r,b); }
 
 class Defs {
 public:
+  virtual std::string show() = 0;
   virtual def findDef(name) = 0;
 };
 
 class Def {
 public:
+  virtual std::string show() = 0;
   virtual name getName() = 0;
   virtual value apply(defs,value) = 0;
 };
@@ -295,6 +297,7 @@ public:
 class NilDefs : public Defs {
 public:
   NilDefs() {}
+  std::string show() { return ""; }
   def findDef(name name) {
     printf("CRASH: NilDefs.findDef(%s)\n", name.c_str());
     abort();
@@ -307,6 +310,9 @@ class ConsDefs : public Defs {
   defs _more;
 public:
   ConsDefs(def d1,defs ds) : _first(d1), _more(ds) {}
+  std::string show() {
+    return _first->show() + _more->show();
+  }
   def findDef(name sought) {
     if (_first->getName() == sought) {
       return _first;
@@ -339,6 +345,9 @@ private:
 public:
   Def1(name func, name formal, exp body)
     : _func(func), _formal(formal), _body(body) {}
+  std::string show() {
+    return "def " +_func + "(" + _formal + "):\n  " + _body->show() + ";\n\n";
+  }
   name getName() { return _func; }
   value apply(defs defs, value actual) {
     //printf("Def1.apply\n");
@@ -354,6 +363,9 @@ public:
   Program(defs ds, exp e) : _theDefs(ds), _mainExp(e) {}
   value execute() {
     return _mainExp->eval(_theDefs,emptyEnv());
+  }
+  std::string show() {
+    return _theDefs->show() + _mainExp->show();
   }
 };
 
@@ -376,4 +388,7 @@ program makeProgram(defs ds, exp main) {
 
 value execute(program p) {
   return p->execute();
+}
+std::string showProgram(program p) {
+  return p->show();
 }

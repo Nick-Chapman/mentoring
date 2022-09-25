@@ -4,10 +4,12 @@
 #include <sstream>
 #include "ast.h"
 #include "lexer.h"
+#include "parser.h"
 
 static void test_exp_ast(void);
 static void test_prog_ast(void);
 static void test_lex_file(std::string path);
+static void test_parse_file(std::string path);
 
 static void crash(std::string mes) {
   printf("cint/CRASH: %s\n", mes.c_str());
@@ -20,12 +22,14 @@ int main(int argc, char* argv[]) {
   bool run_test_exp_ast = false;
   bool run_test_prog_ast = false;
   bool run_test_lexer = false;
+  bool run_test_parser = false;
 
   for (int i = 1; i < argc; i++) {
     std::string arg = argv[i];
     if (arg == "-test-exp") run_test_exp_ast = true;
     if (arg == "-test-prog") run_test_prog_ast = true;
     if (arg == "-test-lex") run_test_lexer = true;
+    if (arg == "-test-parser") run_test_parser = true;
     if (arg == "-test") {
       run_test_exp_ast = true;
       run_test_prog_ast = true;
@@ -34,13 +38,14 @@ int main(int argc, char* argv[]) {
   }
   if (run_test_exp_ast) test_exp_ast();
   if (run_test_prog_ast) test_prog_ast();
-  if (run_test_lexer) test_lex_file("examples/fact.prog");
+  if (run_test_lexer) test_lex_file("example.prog");
+  if (run_test_parser) test_parse_file("example.prog");
 
   return 0;
 }
 
-void test_lex_string(std::string str) {
-  LexState ls = LexState(str);
+
+void see_tokens(LexState& ls) {
   int i = 0;
   Token tok = ls.get_token();
   while (tok.kind() != NoMoreTokens) {
@@ -51,13 +56,27 @@ void test_lex_string(std::string str) {
   }
 }
 
-void test_lex_file(std::string path) {
-  printf("test_lex_file: %s\n", path.c_str());
+std::string file_contents(std::string path) {
+  printf("file_contents: %s\n", path.c_str());
   std::ifstream ifs(path); // TODO: error when path does not exist
   std::stringstream buffer;
   buffer << ifs.rdbuf();
-  std::string contents = buffer.str();
-  test_lex_string(contents);
+  return buffer.str();
+}
+
+void test_parse_file(std::string path) {
+  LexState ls(file_contents(path));
+  program theProg = parse_program(ls);
+  printf("[\n%s\n]\n",showProgram(theProg).c_str());
+  printf("leftover tokens...\n");
+  see_tokens(ls);
+  value res = execute(theProg);
+  printf("executes --> %s\n", showV(res).c_str());
+}
+
+void test_lex_file(std::string path) {
+  LexState ls(file_contents(path));
+  see_tokens(ls);
 }
 
 void t2(exp example, env env, value expected) {
@@ -145,6 +164,7 @@ defs allDefs() {
 void tp(exp mainExp) {
   defs defs = allDefs();
   program theProg = makeProgram(defs,mainExp);
+  //printf("[\n%s\n]\n",showProgram(theProg).c_str());
   value res = execute(theProg);
   printf("%s --> %s\n", show(mainExp).c_str(), showV(res).c_str());
 }

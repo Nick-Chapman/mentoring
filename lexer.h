@@ -1,3 +1,6 @@
+#ifndef LEXER_H
+#define LEXER_H
+
 #include <string>
 
 enum Kind
@@ -16,6 +19,7 @@ enum Kind
    Langle,
    Rangle,
    Colon,
+   Semi,
    If,
    Then,
    Else,
@@ -48,3 +52,5 @@ class LexState {
   LexState(std::string);
   Token get_token();
 };
+
+#endif

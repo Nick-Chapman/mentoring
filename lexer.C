@@ -17,6 +17,7 @@ std::string showKind(Kind k) {
     kind(Equals);
     kind(DoubleEquals);
     kind(Colon);
+    kind(Semi);
     kind(If);
     kind(Then);
     kind(Else);
@@ -90,6 +91,7 @@ Token LexState::get_token() {
   case '<': kind = Langle; break;
   case '>': kind = Rangle; break;
   case ':': kind = Colon; break;
+  case ';': kind = Semi; break;
 
   case 'i': {
     kind = Identifier;

@@ -1,0 +1,16 @@
+
+def square(x):
+    (x * x);
+
+def quad(x):
+    square(square(x));
+
+def fib(x): if (x < 2) then 1 else (fib((x-1)) + fib((x-2)));
+
+def factorial(x):
+    if (x < 1) then
+       1
+    else
+       (x * factorial((x-1)));
+
+fib(factorial(4))
