@@ -1,4 +1,3 @@
-
 #include "lexer.h"
 
 std::string showKind(Kind k) {
