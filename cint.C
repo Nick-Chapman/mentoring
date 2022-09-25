@@ -49,7 +49,7 @@ void test_lexer(void) {
 
 
 // interface types
-typedef std::string identifier; //TODO: rename -> "name"
+typedef std::string name;
 class Exp;
 typedef Exp* exp;
 class Value;
@@ -66,11 +66,11 @@ exp mul(exp,exp);       // A * B
 exp sub(exp,exp);       // A - B
 exp less(exp,exp);      // A < B
 exp ite(exp,exp,exp);   // (1) if A then B else C  *or*  (2) A ? B : C
-exp var(identifier);    // x
+exp var(name);          // x
 exp str(std::string);   // "foo"
 exp append(exp,exp);    // A ++ B
-exp let(identifier,exp,exp); // let X = RHS in BODY
-exp call1(identifier f,exp arg); // f(arg)
+exp let(name,exp,exp);  // let X = RHS in BODY
+exp call1(name f,exp arg); // f(arg)
 
 // interface: values
 value vInt(int);
@@ -95,7 +95,7 @@ typedef Def* def;
 program makeProgram(defs, exp main);
 defs nilDefs();
 defs consDefs(def,defs);
-def def1(identifier name, identifier arg, exp body);
+def def1(name func, name arg, exp body);
 value execute(program);
 
 
@@ -120,8 +120,8 @@ void t2(exp example, env env, value expected) {
 
 // interface: environments...
 env emptyEnv();
-env extendEnv(env,identifier,value);
-value lookupEnv(env,identifier);
+env extendEnv(env,name,value);
+value lookupEnv(env,name);
 
 void t(exp example, value expected) {
   t2(example, emptyEnv(), expected);
@@ -215,12 +215,12 @@ void test_prog_ast(void) {
 
 class Env {
 public:
-  virtual value lookup(identifier) = 0;
+  virtual value lookup(name) = 0;
 };
 
 class EmptyEnv : public Env {
 public:
-  value lookup(identifier name) {
+  value lookup(name name) {
     printf("CRASH: EmptyEnv.lookup(%s)\n", name.c_str());
     abort();
     return 0;
@@ -229,11 +229,11 @@ public:
 
 class ExtendedEnv : public Env {
   env _env;
-  identifier _name;
+  name _name;
   value _value;
 public:
-  ExtendedEnv(env env,identifier name,value value) : _env(env), _name(name), _value(value) {}
-  value lookup(identifier sought) {
+  ExtendedEnv(env env,name name,value value) : _env(env), _name(name), _value(value) {}
+  value lookup(name sought) {
     if (_name == sought) {
       return _value;
     } else {
@@ -246,10 +246,10 @@ env emptyEnv() {
   return new EmptyEnv();
 }
 
-env extendEnv(env env,identifier name,value value) {
+env extendEnv(env env,name name,value value) {
   return new ExtendedEnv(env,name,value);
 }
-value lookupEnv(env env,identifier name) {
+value lookupEnv(env env,name name) {
   return env->lookup(name);
 }
 
@@ -431,11 +431,11 @@ public:
 };
 
 class LetExpression : public Exp {
-  identifier _x;
+  name _x;
   exp _rhs;
   exp _body;
 public:
-  LetExpression(identifier x, exp rhs, exp body) : _x(x), _rhs(rhs), _body(body) {}
+  LetExpression(name x, exp rhs, exp body) : _x(x), _rhs(rhs), _body(body) {}
   value eval(defs defs, env env0) {
     value rhsValue = _rhs->eval(defs,env0);
     env env1 = extendEnv(env0, _x, rhsValue);
@@ -447,9 +447,9 @@ public:
 };
 
 class Variable : public Exp {
-  identifier _name;
+  name _name;
 public:
-  Variable(identifier name) : _name(name) {}
+  Variable(name name) : _name(name) {}
   value eval(defs defs, env env) {
     return lookupEnv(env,_name);
   }
@@ -479,28 +479,28 @@ exp mul(exp x ,exp y) { return new Mul(x,y); }
 exp sub(exp x ,exp y) { return new Sub(x,y); }
 exp less(exp x ,exp y) { return new LessThan(x,y); }
 exp ite(exp i ,exp t, exp e) { return new IfThenElse(i,t,e); }
-exp var(identifier name) { return new Variable(name); }
+exp var(name name) { return new Variable(name); }
 exp append(exp a,exp b) { return new Append(a,b); }
-exp let(identifier x,exp r,exp b) { return new LetExpression(x,r,b); }
+exp let(name x,exp r,exp b) { return new LetExpression(x,r,b); }
 
 
 // implementation: definitions and programs
 
 class Defs {
 public:
-  virtual def findDef(identifier) = 0;
+  virtual def findDef(name) = 0;
 };
 
 class Def {
 public:
-  virtual identifier getName() = 0;
+  virtual name getName() = 0;
   virtual value apply(defs,value) = 0;
 };
 
 class NilDefs : public Defs {
 public:
   NilDefs() {}
-  def findDef(identifier name) {
+  def findDef(name name) {
     printf("CRASH: NilDefs.findDef(%s)\n", name.c_str());
     abort();
     return 0;
@@ -512,7 +512,7 @@ class ConsDefs : public Defs {
   defs _more;
 public:
   ConsDefs(def d1,defs ds) : _first(d1), _more(ds) {}
-  def findDef(identifier sought) {
+  def findDef(name sought) {
     if (_first->getName() == sought) {
       return _first;
     } else {
@@ -522,10 +522,10 @@ public:
 };
 
 class Call1 : public Exp {
-  identifier _func;
+  name _func;
   exp _arg;
 public:
-  Call1(identifier f, exp a) : _func(f), _arg(a) {}
+  Call1(name f, exp a) : _func(f), _arg(a) {}
   value eval(defs defs, env env) {
     def called = defs->findDef(_func);
     value v = _arg->eval(defs,env);
@@ -538,13 +538,13 @@ public:
 
 class Def1 : public Def {
 private:
-  identifier _name;
-  identifier _formal;
+  name _func;
+  name _formal;
   exp _body;
 public:
-  Def1(identifier name, identifier formal, exp body)
-    : _name(name), _formal(formal), _body(body) {}
-  identifier getName() { return _name; }
+  Def1(name func, name formal, exp body)
+    : _func(func), _formal(formal), _body(body) {}
+  name getName() { return _func; }
   value apply(defs defs, value actual) {
     //printf("Def1.apply\n");
     env env = extendEnv(emptyEnv(),_formal,actual);
@@ -563,11 +563,11 @@ public:
 };
 
 
-exp call1(identifier f,exp arg) {
+exp call1(name f,exp arg) {
   return new Call1(f,arg);
 }
-def def1(identifier name, identifier arg, exp body) {
-  return new Def1(name,arg,body);
+def def1(name func, name arg, exp body) {
+  return new Def1(func,arg,body);
 }
 defs nilDefs() {
   return new NilDefs();
