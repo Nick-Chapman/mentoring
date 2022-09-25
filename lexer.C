@@ -14,7 +14,8 @@ std::string showKind(Kind k) {
     kind(Dash);
     kind(Plus);
     kind(Star);
-    kind(DoubleStar);
+    kind(Equals);
+    kind(DoubleEquals);
     kind(Colon);
     kind(If);
     kind(Then);
@@ -32,19 +33,6 @@ LexState::LexState(std::string s)
   : _input(s)
   , _pos(0)
 {}
-
-
-/*v1...
-Token LexState::get_token() {
-  if (_pos >= _input.size()) {
-    return Token(_input,NoMoreTokens,_pos,0);
-  }
-  unsigned start = _pos++;
-  Kind kind = UnknownChar;
-  unsigned len = _pos - start;
-  return Token(_input,kind,start,len);
-}
-*/
 
 static bool isWhite(char c) {
   return c == ' ' || c == '\n' || c == '\t';
@@ -89,10 +77,11 @@ Token LexState::get_token() {
   switch (c) {
   case '-': kind = Dash; break;
   case '+': kind = Plus; break;
-  case '*':
-    kind = Star;
-    if (_input[_pos] == '*') {
-      kind = DoubleStar;
+  case '*': kind = Star; break;
+  case '=':
+    kind = Equals;
+    if (_input[_pos] == '=') {
+      kind = DoubleEquals;
       _pos++;
     }
     break;
