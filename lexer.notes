@@ -1,0 +1,30 @@
+{-
+ "(foo + 42)"
+ t1,t2,t3,...
+
+ t1 = 0-0, LP
+ t2 = 1-3, Identifier, text="foo"
+ t3 = 5-5, PLUS
+-}
+
+type Token
+
+-- lex :: String -> List(Token)
+
+
+type Kind = Identifier | Number | LP | RP | ...
+
+token_kind :: Token -> Kind
+token_text :: Token -> String
+token_startPos :: Token -> Pos
+token_endPos :: Token -> Pos
+
+type LexerState
+init_lexer :: String -> LexerState
+get_token :: LexerState -> (Token, LexerState)
+is_token :: LexerState -> Bool
+
+
+--type Pos = { row :: Int, col :: Int }
+type Pos = Int
+
