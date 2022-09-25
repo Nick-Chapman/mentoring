@@ -1,11 +1,19 @@
 #include <stdio.h>
 #include <string>
+#include <fstream>
+#include <sstream>
 #include "ast.h"
 #include "lexer.h"
 
-void test_exp_ast(void);
-void test_prog_ast(void);
-void test_lexer(void);
+static void test_exp_ast(void);
+static void test_prog_ast(void);
+static void test_lex_file(std::string path);
+
+static void crash(std::string mes) {
+  printf("cint/CRASH: %s\n", mes.c_str());
+  fflush(stdout);
+  abort();
+}
 
 int main(int argc, char* argv[]) {
 
@@ -26,16 +34,13 @@ int main(int argc, char* argv[]) {
   }
   if (run_test_exp_ast) test_exp_ast();
   if (run_test_prog_ast) test_prog_ast();
-  if (run_test_lexer) test_lexer();
+  if (run_test_lexer) test_lex_file("examples/fact.prog");
+
   return 0;
 }
 
-void test_lexer(void) {
-
-  // TODO: read program string from file
-  LexState ls =
-    LexState("def fib(x):\n if (x < 2) then 1 else fib(x-1) + fib(x-2) ");
-
+void test_lex_string(std::string str) {
+  LexState ls = LexState(str);
   int i = 0;
   Token tok = ls.get_token();
   while (tok.kind() != NoMoreTokens) {
@@ -46,10 +51,13 @@ void test_lexer(void) {
   }
 }
 
-static void crash(std::string mes) {
-  printf("cint/CRASH: %s\n", mes.c_str());
-  fflush(stdout);
-  abort();
+void test_lex_file(std::string path) {
+  printf("test_lex_file: %s\n", path.c_str());
+  std::ifstream ifs(path); // TODO: error when path does not exist
+  std::stringstream buffer;
+  buffer << ifs.rdbuf();
+  std::string contents = buffer.str();
+  test_lex_string(contents);
 }
 
 void t2(exp example, env env, value expected) {
