@@ -1,19 +1,20 @@
 
-Exp =
+expression =
   | Identifier
-  | Identifier '(' Exp ')'
   | Number
-  | 'if' Exp 'then' Exp 'else' Exp
-  | '(' Exp BinOp Exp ')'
+  | '(' expression ')'
+  | expression bin_op expression
+  | "if" expression "then" expression "else" expression
+  | Identifier '(' expression ')
 
-BinOp = '+' | '-' | '*' | '<'
+bin_op = '+' | '-' | '*' | '<'
 
-Def =
-  | 'def' Identifier '(' Identifier ')' ':' Exp ';'
+definition =
+  | "def" Identifier '(' Identifier ')' ':' expression ';'
 
-DefList =
+definition_list =
   | <nothing>
-  | Def DefList
+  | definition definition_list
 
-Program =
-  | DefList Exp
+program =
+  | definition_list expression
