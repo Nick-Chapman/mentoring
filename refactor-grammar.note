@@ -1,0 +1,26 @@
+
+
+exp0 =
+      | Number
+      | Identifier
+      | exp0 '+' exp0
+      | exp0 '*' exp0
+      | '(' exp0 ')'
+
+1    * 2    + 3
+atom * atom + atom
+atom * exp + prod
+atom *    exp
+
+
+prod * atom + atom
+   prod     + atom
+   exp      + atom
+   exp      + prod
+           exp
+
+exp = prod | exp '+' prod
+
+prod = atom | prod '*' atom
+
+atom = Number | Identifier | '(' exp ')'

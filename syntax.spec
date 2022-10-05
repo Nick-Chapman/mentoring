@@ -1,11 +1,14 @@
 
+start = program
+
 expression =
   | Identifier
   | Number
-  | '(' expression ')'
-  | expression bin_op expression
+//  | '(' expression ')'
+//  | expression bin_op expression
   | "if" expression "then" expression "else" expression
   | Identifier '(' expression ')
+  | '(' expression bin_op expression ')'
 
 bin_op = '+' | '-' | '*' | '<'
 
