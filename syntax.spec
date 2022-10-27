@@ -2,15 +2,16 @@
 start = program
 
 expression =
-  | Identifier
-  | Number
-//  | '(' expression ')'
-//  | expression bin_op expression
   | "if" expression "then" expression "else" expression
+  | "let" Identifier '=' expression "in" expression
+  | expression '<' expression
+  | expression '+' expression
+  | expression '-' expression
+  | expression '*' expression
+  | Number
+  | Identifier
   | Identifier '(' expression ')
-  | '(' expression bin_op expression ')'
-
-bin_op = '+' | '-' | '*' | '<'
+  | '(' expression ')'
 
 definition =
   | "def" Identifier '(' Identifier ')' ':' expression ';'
