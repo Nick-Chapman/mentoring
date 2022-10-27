@@ -5,6 +5,7 @@ expression =
   | "if" expression "then" expression "else" expression
   | "let" Identifier '=' expression "in" expression
   | expression '<' expression
+  | expression '>' expression
   | expression '+' expression
   | expression '-' expression
   | expression '*' expression
