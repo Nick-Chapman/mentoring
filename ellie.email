@@ -1,0 +1,97 @@
+
+Hey Ellie,
+
+I really enjoyed our session today. And I have a gift for you... :)
+
+A refactored expression grammar which:
+- contains no left-recursive non-terminals
+- is fully unambiguous
+- encodes normal operator precedence for binops: <,>,+,-,*
+
+This grammar should be directly transcribable to a recursive descent parser, coded in C++, with nothing(**) more tricky than the use of "peek" at the correct points.
+
+Taking the following completely ambiguous grammar as a starting point...
+
+(This is close to what you have now, except: I added a greater-than op; reordered a few of the productions; inlined the binop non-terminal into expression; reinstated the separate production for a bracketed expression, and so removed the required brackets from the binop productions.)
+
+
+----------------------------------------------------------------------
+start = program
+
+expression =
+  | "if" expression "then" expression "else" expression
+  | "let" Identifier '=' expression "in" expression
+  | expression '<' expression
+  | expression '>' expression
+  | expression '+' expression
+  | expression '-' expression
+  | expression '*' expression
+  | Number
+  | Identifier
+  | Identifier '(' expression ')
+  | '(' expression ')'
+
+definition =
+  | "def" Identifier '(' Identifier ')' ':' expression ';'
+
+definition_list =
+  | <nothing>
+  | definition definition_list
+
+program =
+  | definition_list expression
+----------------------------------------------------------------------
+
+
+From the above grammar, I've manually refactored to remove ambiguity and left-recursion, whilst introducing a hierarchy of expression non-terminals (exp1,exp2...) which capture the standard operator precedence. That is: multiplication binds most tightly; followed by add/subtract; and finally less/greater-than.
+
+Here it is: (start/definition/program stuff is unchanged so not repeated)
+
+
+----------------------------------------------------------------------
+expression = // general-expression
+  | "if" expression "then" expression "else" expression
+  | "let" Identifier '=' expression "in" expression
+  | exp1
+
+exp1 = // relational-expression; less/greater-than; not-associative
+  | exp2 '<' exp2
+  | exp2 '>' exp2
+  | exp2
+
+exp2 = // term-expression: add/minus; left-associative
+  | exp3 exp2x
+
+exp2x = // term-expression (continuation)
+  | '+' exp3 exp2x
+  | '-' exp3 exp2x
+  | <nothing>
+
+exp3 = // product-expression: multiplication; left-associative
+  | exp4 exp3x
+
+exp3x = // product-expression (continuation)
+  | '*' exp4 exp3x
+  | <nothing>
+
+exp4 = // atomic-expression
+  | Number
+  | Identifier
+  | Identifier '(' expression ')
+  | '(' expression ')'
+----------------------------------------------------------------------
+
+
+Except for one exception, this grammar should parse (unambiguously) everything the original grammar would parse. The only exception is expressions of the form: "a < b < c" which I deliberately decided to have the grammar reject, as they are probably a user-mistake. If the user really means to write this, they can use brackets: "(a < b) < c" or "a < (b < c)" which will parse just fine!
+
+In the case of multiplication and add/sub, the grammar is written in right-recursive style rather like we did for definition-list. (See the non-terminals commented as being continuations). We must use right-recursive style to avoid the C++ parser from looping without making any progress (as we discussed!)
+
+((**) Almost nothing!) However, we really want both multiplication, and add/sub to be left-associative. This can be achieved by a "simple" trick when translating to the (C++) recursive descent parser. I can show you during our next session.
+
+If anything above is not making sense, let me know and I will explain some more.
+
+If you want some homework, you could try adapting your parser to this better grammar.
+
+Have fun...
+
+Dad xxx
