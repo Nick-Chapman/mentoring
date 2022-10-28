@@ -1,24 +1,21 @@
 
 top: run
 
-gen=_build
-
 run: _build cint.exe Makefile
 	./cint.exe -test-parser
 
-cint.exe: _build/cint.o _build/ast.o _build/lexer.o _build/parser.o
-	g++ $^ -o $@
+units = $(patsubst src/%.C, %, $(wildcard src/*.C))
+objs = $(patsubst %, _build/%.o, $(units))
+deps = $(patsubst %, _build/%.d, $(units))
 
-_build/cint.o: src/cint.C src/ast.h src/lexer.h src/parser.h
-	g++ -Wall -Werror $< -c -o $@
+cint.exe: $(objs)
+	@echo Linking
+	@g++ $^ -o $@
 
-_build/ast.o: src/ast.C src/ast.h
-	g++ -Wall -Werror $< -c -o $@
-
-_build/lexer.o: src/lexer.C src/lexer.h
-	g++ -Wall -Werror $< -c -o $@
-
-_build/parser.o: src/parser.C src/parser.h src/lexer.h src/ast.h
-	g++ -Wall -Werror $< -c -o $@
+_build/%.o: src/%.C Makefile
+	@echo Building $<
+	@g++ -Wall -Werror $< -c -o $@ -MMD
 
 _build: ; @mkdir -p $@
+
+-include $(deps)
