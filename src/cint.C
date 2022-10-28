@@ -49,8 +49,8 @@ void see_tokens(LexState& ls) {
   int i = 0;
   Token tok = ls.get_token();
   while (tok.kind() != NoMoreTokens) {
-    printf("%2d) %02d-%02d '%s' %s \n", i,
-           tok.startPos(), tok.endPos(), tok.text().c_str(), showKind(tok.kind()).c_str());
+    printf("%2d) %02d-%02d [%s] '%s' %s \n", i,
+           tok.startPos(), tok.endPos(), tok.startRC().c_str(), tok.text().c_str(), showKind(tok.kind()).c_str());
     i++;
     tok = ls.get_token();
   }

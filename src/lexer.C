@@ -30,9 +30,15 @@ std::string Token::text() {
   return _input.substr(_pos,_length);
 }
 
+std::string Token::startRC() {
+  return std::to_string(_row) + "." + std::to_string(_col);
+}
+
 LexState::LexState(std::string s)
   : _input(s)
   , _pos(0)
+  , _row(1)
+  , _col(0)
 {}
 
 static bool isWhite(char c) {
@@ -63,16 +69,29 @@ static bool isIdentContinue(char c) {
 Token LexState::get_token() {
 
   // TODO: comments (end-of-line / begin-end comment markers)
-  while (isWhite(_input[_pos])) _pos++;
+  {
+    char c;
+    while (isWhite(c = _input[_pos])) {
+      _pos++;
+      if (c == '\n') {
+        _row++;
+        _col = 0;
+      } else {
+        _col++;
+      }
+    }
+  }
 
   if (_pos >= _input.size()) {
-    return Token(_input,NoMoreTokens,_pos,0);
+    return Token(_input,NoMoreTokens,_pos,0,_row,_col);
   }
 
   Kind kind = UNKNOWN_CHAR;
 
   unsigned start = _pos;
-  char c = _input[_pos++];
+  unsigned startRow = _row;
+  unsigned startCol = _col;
+  char c = _input[_pos++]; _col++;
 
   // TODO: literal strings; floats...
   switch (c) {
@@ -83,7 +102,7 @@ Token LexState::get_token() {
     kind = Equals;
     if (_input[_pos] == '=') {
       kind = DoubleEquals;
-      _pos++;
+      _pos++; _col++;
     }
     break;
   case '(': kind = LP; break;
@@ -95,7 +114,7 @@ Token LexState::get_token() {
 
   case 'i': {
     kind = Identifier;
-    while (isIdentContinue(_input[_pos])) _pos++;
+    while (isIdentContinue(_input[_pos])) { _pos++; _col++; }
     std::string s = _input.substr(start, _pos - start);
     if (s == "if") kind = If;
     break;
@@ -104,12 +123,12 @@ Token LexState::get_token() {
   default: {
 
     if (isNumber(c)) {
-      while (isNumber(_input[_pos])) _pos++;
+      while (isNumber(_input[_pos])) { _pos++; _col++; }
       kind = Number;
     }
 
     if (isIdentStart(c)) {
-      while (isIdentContinue(_input[_pos])) _pos++;
+      while (isIdentContinue(_input[_pos])) { _pos++; _col++; }
       kind = Identifier;
       std::string s = _input.substr(start, _pos - start);
       if (s == "then") kind = Then;
@@ -121,5 +140,5 @@ Token LexState::get_token() {
   }
 
   unsigned len = _pos - start;
-  return Token(_input,kind,start,len);
+  return Token(_input,kind,start,len,startRow,startCol);
 }

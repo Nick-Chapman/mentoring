@@ -12,7 +12,8 @@ void error(Token tok, std::string mes) {
   crash(mes + "; got '" + tok.text() + "' ("
         + showKind(tok.kind()) + ") at "
         + std::to_string(tok.startPos()) + ":"
-        + std::to_string(tok.endPos())
+        + std::to_string(tok.endPos()) + " ["
+        + tok.startRC() + "]"
         );
 }
 
