@@ -11,9 +11,7 @@ static void crash(std::string mes) {
 void error(Token tok, std::string mes) {
   crash(mes + "; got '" + tok.text() + "' ("
         + showKind(tok.kind()) + ") at "
-        + std::to_string(tok.startPos()) + ":"
-        + std::to_string(tok.endPos()) + " ["
-        + tok.startRC() + "]"
+        + tok.startRC()
         );
 }
 
@@ -29,7 +27,9 @@ Kind peek_token(LexState ls) { // **no '&'; state unchanged
   return tok.kind();
 }
 
-exp parse_expression(LexState& ls) {
+exp parse_expression(LexState& ls);
+
+exp parse_exp4(LexState& ls) {
   Token tok = ls.get_token();
   switch (tok.kind()) {
   case Identifier: {
@@ -47,42 +47,10 @@ exp parse_expression(LexState& ls) {
     sscanf(tok.text().c_str(),"%d",&n);
     return num(n);
   }
-  case If: {
-    exp i = parse_expression(ls);
-    ensure_token(ls,Then);
-    exp t = parse_expression(ls);
-    ensure_token(ls,Else);
-    exp e = parse_expression(ls);
-    return ite(i,t,e);
-  }
   case LP: {
-    exp l = parse_expression(ls);
-    Token tok = ls.get_token();
-    switch (tok.kind()) {
-    case Plus: {
-      exp r = parse_expression(ls);
-      ensure_token(ls,RP);
-      return add(l,r);
-    }
-    case Dash: {
-      exp r = parse_expression(ls);
-      ensure_token(ls,RP);
-      return sub(l,r);
-    }
-    case Star: {
-      exp r = parse_expression(ls);
-      ensure_token(ls,RP);
-      return mul(l,r);
-    }
-    case Langle: {
-      exp r = parse_expression(ls);
-      ensure_token(ls,RP);
-      return less(l,r);
-    }
-    default: {
-      error(tok,"<Exp> expected binary-operator");
-    }
-    }
+    exp e = parse_expression(ls);
+    ensure_token(ls,RP);
+    return e;
   }
   default: {
     error(tok,"<Exp>");
@@ -90,6 +58,58 @@ exp parse_expression(LexState& ls) {
   }
   return 0;
 }
+
+
+exp parse_exp3(LexState& ls) {
+  exp l = parse_exp4(ls);
+  if (peek_token(ls) == Star) {
+    ensure_token(ls,Star);
+    exp r = parse_exp4(ls);
+    return mul(l,r);
+  }
+  return l;
+}
+
+exp parse_exp2(LexState& ls) {
+  exp l = parse_exp3(ls);
+  if (peek_token(ls) == Langle) {
+    ensure_token(ls,Langle);
+    exp r = parse_exp3(ls);
+    return less(l,r);
+  }
+  return l;
+}
+
+exp parse_exp1(LexState& ls) {
+  exp l = parse_exp2(ls);
+  if (peek_token(ls) == Plus) {
+    ensure_token(ls,Plus);
+    exp r = parse_exp2(ls);
+    return add(l,r);
+  }
+  if (peek_token(ls) == Dash) {
+    ensure_token(ls,Dash);
+    exp r = parse_exp2(ls);
+    return sub(l,r);
+  }
+  return l;
+}
+
+exp parse_expression(LexState& ls) {
+
+  if (peek_token(ls) == If) {
+    ensure_token(ls,If);
+    exp i = parse_expression(ls);
+    ensure_token(ls,Then);
+    exp t = parse_expression(ls);
+    ensure_token(ls,Else);
+    exp e = parse_expression(ls);
+    return ite(i,t,e);
+  }
+  //if (peek_token(ls) == Let) {
+  return parse_exp1(ls);
+}
+
 
 name parse_name(LexState& ls) {
   Token tok = ls.get_token();
