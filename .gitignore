@@ -1,4 +1,4 @@
 *.exe
-*.o
+_build
 *~
 */lex.yy.c
