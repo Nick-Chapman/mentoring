@@ -1,0 +1,61 @@
+name:                h101
+version:             0.1.0.0
+description:         First steps with Haskell
+license:             BSD3
+author:              Nick Chapman
+maintainer:          nic@amadido.co.uk
+github:              https://github.com/Nick-Chapman/mentoring.git
+
+extra-source-files:
+- README.md
+
+dependencies:
+- ansi-terminal
+- array
+- async
+- base >= 4.7 && < 5
+- bytestring
+- clock
+- containers
+- containers
+- extra
+- haskeline
+- mtl
+- split
+- text
+- time
+- transformers
+- word8
+- EarleyM
+
+default-extensions:
+- BangPatterns
+- DuplicateRecordFields
+- EmptyCase
+- FlexibleContexts
+- GADTs
+- GeneralizedNewtypeDeriving
+- InstanceSigs
+- LambdaCase
+- MultiWayIf
+- NamedFieldPuns
+- NondecreasingIndentation
+- NumericUnderscores
+- RankNTypes
+- ScopedTypeVariables
+- TypeApplications
+- TypeFamilies
+- UndecidableInstances
+
+ghc-options:
+- -Werror
+- -Wall
+- -Wno-name-shadowing
+
+library:
+  source-dirs: src
+
+executables:
+  main.exe:
+    main:                app/main.hs
+    dependencies:        h101
