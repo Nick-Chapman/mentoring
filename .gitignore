@@ -1,4 +1,3 @@
-*.exe
-_build
 *~
-*/lex.yy.c
+cint/*.exe
+cint/_build

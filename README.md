@@ -1,3 +1,3 @@
-# cint
+# mentoring
 
-Step by step development of a small interpreter in C++.
+Prep work for mentoring.
