@@ -1,10 +1,8 @@
-module Top (main) where
+module Top  where
 
-import qualified Coins (playCoins)
-import qualified Bf (main)
+import qualified ListyStuff
 
 main :: IO ()
 main = do
   putStrLn "*h101*"
-  let _ = Coins.playCoins
-  Bf.main
+  ListyStuff.main
