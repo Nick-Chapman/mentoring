@@ -40,6 +40,18 @@ loop start = \case
     let end = start
     L { start, end = start, item = PLUS } : loop (step 1 end) xs
 
+  '-':xs -> do
+    let end = start
+    L { start, end = start, item = DASH } : loop (step 1 end) xs
+
+  '(':xs -> do
+    let end = start
+    L { start, end = start, item = LP } : loop (step 1 end) xs
+
+  ')':xs -> do
+    let end = start
+    L { start, end = start, item = RP } : loop (step 1 end) xs
+
   d1:xs0 | isDigit d1 -> do
     let (ds,xs) = span isDigit xs0
     let n = read @Int (d1:ds)

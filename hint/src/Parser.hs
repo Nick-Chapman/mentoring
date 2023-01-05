@@ -26,21 +26,46 @@ parProgram = \case
   L{item=IDENT "main"}:xs ->
     case xs of
       L{item=EQ}:xs -> do
-        Ast.Program { main = parExp xs }
+        case (parExp xs) of
+          (main,[]) -> Ast.Program { main }
+          (_,xs) -> err xs "program after main expression"
       xs ->
         err xs "program after main"
 
   xs ->
     err xs "program!"
 
-parExp :: [Located Token] -> Exp
+
+parExp :: [Located Token] -> (Exp,[Located Token])
 parExp = \case
   L{item=NUMBER n}:xs ->
-    case xs of
-      [] -> Ast.Lit n
-      L{item=PLUS}:xs -> do
-        let e1 = Ast.Lit n
-        let e2 = parExp xs
-        Ast.Add e1 e2
-      xs -> err xs "exp after number"
-  xs -> err xs "exp!"
+    parExpContinue (Ast.Lit n) xs
+
+  L{item=LP}:xs -> do
+    case parExp xs of
+      (body,xs) ->
+        case xs of
+          L{item=RP}:xs -> do
+            parExpContinue body xs
+          _ -> do
+            err xs "exp expected RP"
+
+  xs ->
+    err xs "exp!"
+
+
+parExpContinue :: Exp -> [Located Token] -> (Exp,[Located Token])
+parExpContinue e1 = \case
+
+  L{item=PLUS}:xs -> do
+    case parExp xs of
+      (e2,xs) ->
+        (Ast.Add e1 e2,xs)
+
+  L{item=DASH}:xs -> do
+    case parExp xs of
+      (e2,xs) ->
+        (Ast.Sub e1 e2,xs)
+
+  xs ->
+    (e1,xs)

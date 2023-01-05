@@ -11,3 +11,4 @@ eval :: Exp -> Value
 eval = \case
   Lit n -> n
   Add e1 e2 -> eval e1 + eval e2
+  Sub e1 e2 -> eval e1 - eval e2

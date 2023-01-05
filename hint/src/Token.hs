@@ -6,4 +6,7 @@ data Token
   | NUMBER Int
   | EQ
   | PLUS
+  | DASH
+  | LP
+  | RP
   deriving Show

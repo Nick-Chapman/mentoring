@@ -8,7 +8,7 @@ main :: IO ()
 main = do
   putStrLn "*hint*"
   _str <- readFile "../cint/example.prog"
-  let str = " main = 12 + 34 + 56 "
+  let str = " main = (100 - 1) + (1000 - 200) + 770000 "
   case parse str of
     Left err -> print err
     Right prog -> do
