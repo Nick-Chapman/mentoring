@@ -2,7 +2,7 @@ module Top (main) where
 
 import Parser (parse)
 import Pretty (pretty)
-import Evaluator (eval)
+import Evaluator (execute)
 
 main :: IO ()
 main = do
@@ -12,5 +12,5 @@ main = do
     Left err -> print err
     Right prog -> do
       mapM_ putStrLn (pretty prog)
-      let v = eval prog
+      let v = execute prog
       print v

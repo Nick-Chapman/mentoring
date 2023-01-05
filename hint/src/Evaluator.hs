@@ -1,7 +1,12 @@
-module Evaluator (eval) where
+module Evaluator (execute) where
 
-import Ast (Program)
+import Ast (Program(..),Exp(..))
 import Value (Value)
 
-eval :: Program -> Value
-eval = undefined
+execute :: Program -> Value
+execute Program{main} =
+  eval main
+
+eval :: Exp -> Value
+eval = \case
+  Lit n -> n
