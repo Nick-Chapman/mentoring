@@ -7,7 +7,8 @@ import Evaluator (execute)
 main :: IO ()
 main = do
   putStrLn "*hint*"
-  str <- readFile "../cint/example.prog"
+  _str <- readFile "../cint/example.prog"
+  let str = " main = 12 + 34 + 56 "
   case parse str of
     Left err -> print err
     Right prog -> do
