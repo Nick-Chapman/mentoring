@@ -9,4 +9,4 @@ data Token
   | DASH
   | LP
   | RP
-  deriving Show
+  deriving (Eq,Show)
