@@ -21,6 +21,7 @@ main = do
 
     x = Var"x"
     y = Var"y"
+    f = Var"f"
 
     sams :: [(Exp,Value)]
     sams =
@@ -37,14 +38,25 @@ main = do
       , (Let "hw" (Concat (LitS "hello, ") (LitS "world")) (Concat (Var "hw") (LitS "!!"))
         , VS "hello, world!!")
 
-      , (Lam "x" (Mul x x)
-        , VI 0)
+      , (Let "sq" (Lam "x" (Mul x x))
+         (App (Var "sq") (App (Var "sq") (Add (Lit 1) (Lit 2))))
+        , VI 81)
 
-      , (Let "sq" (Lam "x" (Mul x x)) (App (Var "sq") (Lit 3))
-        , VI 0)
+      , (Let "sub" (Lam "x" (Lam "y" (Sub x y)))
+         (App (App (Var "sub") (Lit 10)) (Lit 3)),
+         VI 7)
+
+      , (Let "thrice" (Lam "f" (Lam "x" (App f (App f (App f x)))))
+         (Let "dec" (Lam "x" (Sub x (Lit 1)))
+          (App (App (App (Var "thrice") (Var "thrice")) (Var "dec")) (Lit 0))) -- -27
+        , VI (-27))
       ]
 
-data Value = VI Int | VS String | VF deriving (Eq,Show)
+data Value
+  = VI Int
+  | VS String
+  | VF Env Identifier Exp
+  deriving (Eq,Show)
 
 type Identifier = String
 data Exp
@@ -58,6 +70,7 @@ data Exp
   | Let Identifier Exp Exp
   | Lam Identifier Exp
   | App Exp Exp
+  deriving (Eq)
 
 
 eval :: Env -> Exp -> Value
@@ -73,8 +86,17 @@ eval env = \case
     let v = eval env rhs
     let env' = extend env x v
     eval env' body
-  App{} -> undefined
-  Lam{} -> undefined
+  App l r -> apply (eval env l) (eval env r)
+  Lam x e -> VF env x e
+
+apply :: Value -> Value -> Value
+apply f v = case f of
+  VF env x body -> do
+    let env' = extend env x v
+    let res = eval env' body
+    res
+  _ ->
+    error (printf "apply: value in funct position not a function: %s " (show f))
 
 addV,subV,mulV,concatV :: Value -> Value -> Value
 addV v1 v2 = VI (getI v1 + getI v2)
@@ -93,7 +115,7 @@ getI = \case
   v -> error (printf "getI: value not an int: %s " (show v))
 
 
-data Env = Env (Map Identifier Value)
+data Env = Env (Map Identifier Value) deriving (Eq,Show)
 
 env0 :: Env
 env0 = Env (Map.fromList [])
