@@ -31,6 +31,8 @@ main = do
         , VI 45)
       , (Let "x" (Lit 5) (Let "y" (Add (Var "x") (Lit 1)) (Mul (Var "x") (Var "y")))
         , VI 30)
+      , (Let "hw" (Concat (LitS "hello, ") (LitS "world")) (Concat (Var "hw") (LitS "!!"))
+        , VS "hello, world!!")
       ]
 
 data Env = Env (Map Identifier Value)
@@ -53,19 +55,27 @@ type Identifier = String
 eval :: Env -> Exp -> Value
 eval env = \case
   Lit n -> VI n
+  LitS s -> VS s
   Var x -> lookup env x
   Add l r -> addV (eval env l) (eval env r)
   Sub l r -> subV (eval env l) (eval env r)
   Mul l r -> mulV (eval env l) (eval env r)
+  Concat l r -> concatV (eval env l) (eval env r)
   Let x rhs body -> do
     let v = eval env rhs
     let env' = extend env x v
     eval env' body
 
-addV,subV,mulV :: Value -> Value -> Value
+addV,subV,mulV,concatV :: Value -> Value -> Value
 addV v1 v2 = VI (getI v1 + getI v2)
 subV v1 v2 = VI (getI v1 - getI v2)
 mulV v1 v2 = VI (getI v1 * getI v2)
+concatV v1 v2 = VS (getS v1 ++ getS v2)
+
+getS :: Value -> String
+getS = \case
+  VS s -> s
+  v -> error (printf "getS: value not a string: %s " (show v))
 
 getI :: Value -> Int
 getI = \case
@@ -74,20 +84,24 @@ getI = \case
 
 data Exp
   = Lit Int
+  | LitS String
   | Var Identifier
   | Add Exp Exp
   | Sub Exp Exp
   | Mul Exp Exp
+  | Concat Exp Exp
   | Let Identifier Exp Exp
 
 instance Show Exp where
   show :: Exp -> String
   show = \case
     Lit n -> show n
+    LitS s -> show s
     Var x -> x
     Add l r -> bin "+" l r
     Sub l r -> bin "-" l r
     Mul l r -> bin "*" l r
+    Concat l r -> bin " ++ " l r
     Let x rhs body -> "(let " ++ x ++ " = " ++ show rhs ++ " in " ++ show body ++ ")"
 
     where bin op l r = "(" ++ show l ++ op ++ show r ++ ")"
