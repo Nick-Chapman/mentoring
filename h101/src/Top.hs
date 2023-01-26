@@ -1,8 +1,8 @@
 module Top  where
 
-import qualified ListyStuff
+import qualified Interpreter
 
 main :: IO ()
 main = do
   putStrLn "*h101*"
-  ListyStuff.main
+  Interpreter.main
