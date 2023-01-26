@@ -19,38 +19,46 @@ main = do
             else printf "FAIL: expected=%s, but got=%s" (show expected) (show actual)
       putStrLn msg
 
+    x = Var"x"
+    y = Var"y"
+
     sams :: [(Exp,Value)]
     sams =
       [ (Add (Lit 1) (Add (Lit 2) (Lit 3))
         , VI 6
         )
       , (Let "x" (Sub (Lit 10) (Lit 3))
-         (Mul (Var "x") (Var "x"))
+         (Mul x x)
         , VI 49)
-      , (Let "x" (Lit 5) (Mul (Let "x" (Add (Var "x") (Var "x")) (Sub (Var "x") (Lit 1))) (Var "x"))
+      , (Let "x" (Lit 5) (Mul (Let "x" (Add x x) (Sub x (Lit 1))) x)
         , VI 45)
-      , (Let "x" (Lit 5) (Let "y" (Add (Var "x") (Lit 1)) (Mul (Var "x") (Var "y")))
+      , (Let "x" (Lit 5) (Let "y" (Add x (Lit 1)) (Mul x y))
         , VI 30)
       , (Let "hw" (Concat (LitS "hello, ") (LitS "world")) (Concat (Var "hw") (LitS "!!"))
         , VS "hello, world!!")
+
+      , (Lam "x" (Mul x x)
+        , VI 0)
+
+      , (Let "sq" (Lam "x" (Mul x x)) (App (Var "sq") (Lit 3))
+        , VI 0)
       ]
 
-data Env = Env (Map Identifier Value)
+data Value = VI Int | VS String | VF deriving (Eq,Show)
 
-env0 :: Env
-env0 = Env (Map.fromList [])
-
-extend :: Env -> Identifier -> Value -> Env
-extend (Env m) x v = Env (Map.insert x v m)
-
-lookup :: Env -> Identifier -> Value
-lookup (Env m) x =
-  case Map.lookup x m of
-    Just v -> v
-    Nothing -> error (show ("lookup",x))
-
-data Value = VI Int | VS String deriving (Eq,Show)
 type Identifier = String
+data Exp
+  = Lit Int
+  | LitS String
+  | Var Identifier
+  | Add Exp Exp
+  | Sub Exp Exp
+  | Mul Exp Exp
+  | Concat Exp Exp
+  | Let Identifier Exp Exp
+  | Lam Identifier Exp
+  | App Exp Exp
+
 
 eval :: Env -> Exp -> Value
 eval env = \case
@@ -65,6 +73,8 @@ eval env = \case
     let v = eval env rhs
     let env' = extend env x v
     eval env' body
+  App{} -> undefined
+  Lam{} -> undefined
 
 addV,subV,mulV,concatV :: Value -> Value -> Value
 addV v1 v2 = VI (getI v1 + getI v2)
@@ -82,15 +92,21 @@ getI = \case
   VI i -> i
   v -> error (printf "getI: value not an int: %s " (show v))
 
-data Exp
-  = Lit Int
-  | LitS String
-  | Var Identifier
-  | Add Exp Exp
-  | Sub Exp Exp
-  | Mul Exp Exp
-  | Concat Exp Exp
-  | Let Identifier Exp Exp
+
+data Env = Env (Map Identifier Value)
+
+env0 :: Env
+env0 = Env (Map.fromList [])
+
+extend :: Env -> Identifier -> Value -> Env
+extend (Env m) x v = Env (Map.insert x v m)
+
+lookup :: Env -> Identifier -> Value
+lookup (Env m) x =
+  case Map.lookup x m of
+    Just v -> v
+    Nothing -> error (show ("lookup",x))
+
 
 instance Show Exp where
   show :: Exp -> String
@@ -103,5 +119,8 @@ instance Show Exp where
     Mul l r -> bin "*" l r
     Concat l r -> bin " ++ " l r
     Let x rhs body -> "(let " ++ x ++ " = " ++ show rhs ++ " in " ++ show body ++ ")"
+    App l r -> "(" ++ show l ++ " " ++ show r ++ ")"
+    Lam x e -> "(\\" ++ x ++ " -> " ++ show e ++ ")"
+    where
+      bin op l r = "(" ++ show l ++ op ++ show r ++ ")"
 
-    where bin op l r = "(" ++ show l ++ op ++ show r ++ ")"
