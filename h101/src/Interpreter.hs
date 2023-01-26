@@ -9,26 +9,28 @@ main :: IO ()
 main = do
   mapM_ run sams
   where
-    run :: (Exp,Int) -> IO ()
+    run :: (Exp,Value) -> IO ()
     run (sam,expected) = do
       putStr (show sam ++ " : ")
       let actual = eval env0 sam
       let ok = (expected==actual)
-      let msg = if ok then printf "PASS: %d" actual else printf "FAIL: expected=%d, but got=%d" expected actual
+      let msg =
+            if ok then printf "PASS: %s" (show actual)
+            else printf "FAIL: expected=%s, but got=%s" (show expected) (show actual)
       putStrLn msg
 
-    sams :: [(Exp,Int)]
+    sams :: [(Exp,Value)]
     sams =
       [ (Add (Lit 1) (Add (Lit 2) (Lit 3))
-        , 6
+        , VI 6
         )
       , (Let "x" (Sub (Lit 10) (Lit 3))
          (Mul (Var "x") (Var "x"))
-        , 49)
+        , VI 49)
       , (Let "x" (Lit 5) (Mul (Let "x" (Add (Var "x") (Var "x")) (Sub (Var "x") (Lit 1))) (Var "x"))
-        , 45)
+        , VI 45)
       , (Let "x" (Lit 5) (Let "y" (Add (Var "x") (Lit 1)) (Mul (Var "x") (Var "y")))
-        , 30)
+        , VI 30)
       ]
 
 data Env = Env (Map Identifier Value)
@@ -45,20 +47,30 @@ lookup (Env m) x =
     Just v -> v
     Nothing -> error (show ("lookup",x))
 
-type Value = Int
+data Value = VI Int | VS String deriving (Eq,Show)
 type Identifier = String
 
 eval :: Env -> Exp -> Value
 eval env = \case
-  Lit n -> n
+  Lit n -> VI n
   Var x -> lookup env x
-  Add l r -> eval env l + eval env r
-  Sub l r -> eval env l - eval env r
-  Mul l r -> eval env l * eval env r
+  Add l r -> addV (eval env l) (eval env r)
+  Sub l r -> subV (eval env l) (eval env r)
+  Mul l r -> mulV (eval env l) (eval env r)
   Let x rhs body -> do
     let v = eval env rhs
     let env' = extend env x v
     eval env' body
+
+addV,subV,mulV :: Value -> Value -> Value
+addV v1 v2 = VI (getI v1 + getI v2)
+subV v1 v2 = VI (getI v1 - getI v2)
+mulV v1 v2 = VI (getI v1 * getI v2)
+
+getI :: Value -> Int
+getI = \case
+  VI i -> i
+  v -> error (printf "getI: value not an int: %s " (show v))
 
 data Exp
   = Lit Int
