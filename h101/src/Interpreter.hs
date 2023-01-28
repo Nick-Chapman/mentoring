@@ -55,6 +55,17 @@ main = do
          VI 5)
       , (Let "x" (Lit (5)) (If (Less x (Lit 0)) (Sub (Lit 0) x) x),
          VI 5)
+
+      , (Let "fact"
+          (App (Var "fix")
+            (Lam "fact"
+              (Lam "x"
+                (If (Less x (Lit 1)) (Lit 1)
+                  (Mul x (App (Var "fact") (Sub x (Lit 1))))
+                ))))
+          (App (Var "fact") (Lit 5))
+        , VI 120)
+
       ]
 
 data Value
@@ -106,7 +117,7 @@ apply f v = case f of
     let res = eval env' body
     res
   _ ->
-    error (printf "apply: value in funct position not a function: %s " (show f))
+    error (printf "apply: value in function position not a function: %s " (show f))
 
 addV,subV,mulV,concatV,lessV :: Value -> Value -> Value
 addV v1 v2 = VI (getI v1 + getI v2)
@@ -130,11 +141,17 @@ getB = \case
   VB b -> b
   v -> error (printf "getB: value not a bool: %s " (show v))
 
-
 data Env = Env (Map Identifier Value) deriving (Eq,Show)
 
 env0 :: Env
-env0 = Env (Map.fromList [])
+env0 = Env (Map.fromList [("fix",fixValue)])
+
+fixValue :: Value
+fixValue = VF env0 "uf" body
+  where
+    -- fix uf ---> uf (fix uf)
+    body :: Exp
+    body = App (Var "uf") (App (Var "fix") (Var "uf"))
 
 extend :: Env -> Identifier -> Value -> Env
 extend (Env m) x v = Env (Map.insert x v m)
