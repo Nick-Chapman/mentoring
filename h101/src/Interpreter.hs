@@ -50,11 +50,17 @@ main = do
          (Let "dec" (Lam "x" (Sub x (Lit 1)))
           (App (App (App (Var "thrice") (Var "thrice")) (Var "dec")) (Lit 0))) -- -27
         , VI (-27))
+
+      , (Let "x" (Lit (-5)) (If (Less x (Lit 0)) (Sub (Lit 0) x) x),
+         VI 5)
+      , (Let "x" (Lit (5)) (If (Less x (Lit 0)) (Sub (Lit 0) x) x),
+         VI 5)
       ]
 
 data Value
   = VI Int
   | VS String
+  | VB Bool
   | VF Env Identifier Exp
   deriving (Eq,Show)
 
@@ -66,10 +72,12 @@ data Exp
   | Add Exp Exp
   | Sub Exp Exp
   | Mul Exp Exp
+  | Less Exp Exp
   | Concat Exp Exp
   | Let Identifier Exp Exp
   | Lam Identifier Exp
   | App Exp Exp
+  | If Exp Exp Exp
   deriving (Eq)
 
 
@@ -81,6 +89,7 @@ eval env = \case
   Add l r -> addV (eval env l) (eval env r)
   Sub l r -> subV (eval env l) (eval env r)
   Mul l r -> mulV (eval env l) (eval env r)
+  Less l r -> lessV (eval env l) (eval env r)
   Concat l r -> concatV (eval env l) (eval env r)
   Let x rhs body -> do
     let v = eval env rhs
@@ -88,6 +97,7 @@ eval env = \case
     eval env' body
   App l r -> apply (eval env l) (eval env r)
   Lam x e -> VF env x e
+  If i t e -> if getB (eval env i) then eval env t else eval env e
 
 apply :: Value -> Value -> Value
 apply f v = case f of
@@ -98,11 +108,12 @@ apply f v = case f of
   _ ->
     error (printf "apply: value in funct position not a function: %s " (show f))
 
-addV,subV,mulV,concatV :: Value -> Value -> Value
+addV,subV,mulV,concatV,lessV :: Value -> Value -> Value
 addV v1 v2 = VI (getI v1 + getI v2)
 subV v1 v2 = VI (getI v1 - getI v2)
 mulV v1 v2 = VI (getI v1 * getI v2)
 concatV v1 v2 = VS (getS v1 ++ getS v2)
+lessV v1 v2 = VB (getI v1 < getI v2)
 
 getS :: Value -> String
 getS = \case
@@ -113,6 +124,11 @@ getI :: Value -> Int
 getI = \case
   VI i -> i
   v -> error (printf "getI: value not an int: %s " (show v))
+
+getB :: Value -> Bool
+getB = \case
+  VB b -> b
+  v -> error (printf "getB: value not a bool: %s " (show v))
 
 
 data Env = Env (Map Identifier Value) deriving (Eq,Show)
@@ -139,10 +155,12 @@ instance Show Exp where
     Add l r -> bin "+" l r
     Sub l r -> bin "-" l r
     Mul l r -> bin "*" l r
+    Less l r -> bin " < " l r
     Concat l r -> bin " ++ " l r
     Let x rhs body -> "(let " ++ x ++ " = " ++ show rhs ++ " in " ++ show body ++ ")"
     App l r -> "(" ++ show l ++ " " ++ show r ++ ")"
     Lam x e -> "(\\" ++ x ++ " -> " ++ show e ++ ")"
+    If i t e -> "(if " ++ show i ++ " then " ++ show t ++ " else " ++ show e ++ ")"
     where
       bin op l r = "(" ++ show l ++ op ++ show r ++ ")"
 
