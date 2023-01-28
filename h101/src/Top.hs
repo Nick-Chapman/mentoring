@@ -8,6 +8,18 @@ main = do
   Interpreter.main
   --print prog
 
+_prog :: Int
+_prog = do
+  let fact = fix (\fact -> \n -> if n < 1 then 1 else n * fact (n-1))
+  1 + fact (2+3)
+
+  where
+    fix :: ((a->a) -> (a->a)) -> (a->a)
+    --fix :: (g -> g) -> g
+    fix openDefinition = do
+      let func x = openDefinition func x
+      func
+
 {-
 prog :: Int
 prog = do
