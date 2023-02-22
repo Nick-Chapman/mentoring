@@ -1,12 +1,16 @@
-module Top  where
+module Top (main) where
 
 import qualified Interpreter
+import qualified Bytecode
 
 main :: IO ()
 main = do
   putStrLn "*h101*"
-  Interpreter.main
+  let _ = Interpreter.main
   --print prog
+  Bytecode.main
+  pure ()
+
 
 _prog :: Int
 _prog = do
