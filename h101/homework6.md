@@ -7,9 +7,9 @@ Specifically, compilation to a simple bytecode language.
 
 ### (1) Bytecode definition
 
-Bytecode is a simple language for expressing computations, which is normally represented compactly as a sequence of bytes. But the essential aspect is that the code is a linear sequence of operations, with no _sub-expression_ structure.
+Bytecode is a form of simple language for expressing computations, which is normally represented compactly as a sequence of bytes. But the essential aspect is that the code is a linear sequence of operations, with no _sub-expression_ structure.
 
-In Haskell we might model this with the following types.
+Let's assume a very simple bytecode, which we model in Haskell with the following type.
 
 ```
 type Code = [BC]
@@ -18,13 +18,18 @@ data BC = ADD | SUB | MUL | DUP | SWAP | PUSH Int deriving Show
 
 #### Bytecode emulator
 
-As we can see, the `Bytecode` type is very simple. All but one of the constructors are pure _enums_. Only the `PUSH` constructor carries a value to _push_. (In this example, all values are simple `Int`s)
+As we can see, this `Bytecode` type is very simple. All but one of the constructors are pure _enums_. Only the `PUSH` constructor carries a value to _push_. (In this example, all values are simple `Int`s)
 
 The first thing we need is an _emulator_ for our bytecode.
 
-Before we can write an emulator we need to understand what each bytecode operatoion means; how does bytecode execute?
+```
+runBC :: [BC] -> Int
+runBC = undefined
+```
 
-Our bytecode targets a stack-machine. The opcodes in a sequence of bytecode execute from left to right. Each opcode, takes its arguments from, and pushes its result(s) to, a stack which is threaded through the computation. Before execution begins the stack is empty. When the bytecode execution finished, the final result remains as the top value (the only value we hope!) on the stack.
+Before we can write an emulator we need to understand what each bytecode operation means; how does bytecode execute?
+
+Our bytecode targets a stack-machine. The opcodes in a sequence of bytecode execute from left to right. Each opcode, takes its arguments from, and pushes its result(s) to, a stack which is threaded through the computation. Before execution begins the stack is empty. When the bytecode execution is finished, the final result remains as the top value (the only value we hope!) on the stack.
 
 The binary arithmetic operators `ADD`,`SUB` and `MUL` each pop two arguments of the stack, compute the result `top OP second`, and then push this result back on the stack. `DUP` takes the top stack item, duplicates it, and pushes back two copies on the stack. `SWAP` swaps the top two stack items. Finally `PUSH n` pushes the value `n` onto the stack.
 
@@ -33,20 +38,15 @@ The binary arithmetic operators `ADD`,`SUB` and `MUL` each pop two arguments of 
 Here's a concrete example, along with the expected result:
 
 ```
-  let code :: Code = [PUSH 7, DUP, PUSH 1, SWAP, SUB, MUL]
+  let code :: [BC] = [PUSH 7, DUP, PUSH 1, SWAP, SUB, MUL]
   print (expect 42 (runBC code))
 ```
 
 Now, please implement `runBC`...
 
-```
-runBC :: [BC] -> Int
-runBC = undefined
-```
-
 ### (2) Expression language
 
-While bytecode is a nice simple model of computation, it is not very human friendly. Human's prefer expressions. For example the following simple language, represented as a Haskell datatype. The language has literal numbers, a couple of binary arithmetic operators, and a unary squaring operator (raise to the power of 2).
+While bytecode is a nice simple model of computation, it is not very human friendly. Humans prefer expressions. For example the following simple language, represented as a Haskell datatype. The language has literal numbers, a couple of binary arithmetic operators, and a unary squaring operator (raise to the power of 2).
 
 ```
 data Exp = Num Int | Add Exp Exp | Sub Exp Exp | Square Exp
@@ -80,7 +80,7 @@ Now finally we reach the point of this homework. We should like to write a compi
 Please implement `compile`...
 
 ```
-compile :: Exp -> Code
+compile :: Exp -> [BC]
 compile = undefined
 ```
 
@@ -89,7 +89,7 @@ compile = undefined
 You should be able to use `compile` to generate bytecode for our running example, inspect it, and see that execution via the bytecode emulator gives the same value as directly using the evaluator.
 
 ```
-  let compiled :: Code = compile exp
+  let compiled :: [BC] = compile exp
   print compiled
   print (expect 100 (runBC compiled))
 ```
