@@ -26,11 +26,11 @@ sort xs = ... let someX .. let anotherX .. if (someX <= anotherX) then ...
 
 Behind the scenes, the type class constraint gets transformed into code which passes a dictionary parameter (to the `sort` function) providing the specific implementation of `<=` for the type `a`.
 
-The important distinction between the OO and Typeclass approaches is that with TypeClasses, the dictionary values for `Ord a` exist and are passed *independently* from the values of type `a`, rather than each value of `a` having access to it's own, potentially different, vtbl.
+The important distinction between the OO and Typeclass approaches is that with TypeClasses, the dictionary values for `Ord a` exist and are passed *independently* from the values of type `a`, rather than each value of `a` having access to its own, potentially different, vtbl.
 
 This approach works really nicely for typeclass examples such as `Ord`, where the overloadeded function `<=` takes more than one argument of type `a`, because we can be sure by construction that the *same* dictionary is used for all `a`s everywhere. (Not so for OO, where it is somewhat of a problem to use virtual dispatch for binary or multi-arg methods).
 
-Finally, the typeclass aprroach allows overloaded methods which are indexed by their return type. The classic example of this in haskell is the `Read` typeclass, which provides an overloaded function to parse a value from a String (think `sscanf`):
+Finally, the typeclass approach allows overloaded methods which are indexed by their return type. The classic example of this in haskell is the `Read` typeclass, which provides an overloaded function to parse a value from a String (think `sscanf`):
 
 ```
 class Read a where
