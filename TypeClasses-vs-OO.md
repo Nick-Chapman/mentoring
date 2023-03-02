@@ -5,8 +5,11 @@ This short note compares the difference in approach to Adhoc polymorphism taken 
 
 #### OO
 
-In the OO approach, *each object* carries a reference to its vtbl, which is used to implement the virtual dispatch. i.e. for classic examples such as: `myShape->computeArea()`, where we assume a simple hierarchy `Circle` and `Square` subtype or implement `Shape`, and `Shape` has a computeArea() method.
+In the OO approach, *each object* carries a reference to its vtbl, which is used to implement the virtual dispatch.
 
+So given the classic example of a `Shape` class with a computeArea() method, and classes `Circle` and `Square` which subtype or implement `Shape`, we achieve type based selection by writing `myShape->computeArea()`.
+
+The vtbl referenced by `myShape` is used to select the `computeArea()` method appropriate for the type of `myShape`.
 
 #### Typeclasses
 
@@ -27,7 +30,7 @@ The important distinction between the OO and Typeclass approaches is that with T
 
 This approach works really nicely for typeclass examples such as `Ord`, where the overloadeded function `<=` takes more than one argument of type `a`, because we can be sure by construction that the *same* dictionary is used for all `a`s everywhere. (Not so for OO, where it is somewhat of a problem to use virtual dispatch for binary or multi-arg methods).
 
-Finally, the typeclass aprroach allows overloaded methods which are indexed by their return type. The classic example of this in haskell is the `Read` typeclass, which provides an overloaded function to parse a value form a String (think `sscanf`):
+Finally, the typeclass aprroach allows overloaded methods which are indexed by their return type. The classic example of this in haskell is the `Read` typeclass, which provides an overloaded function to parse a value from a String (think `sscanf`):
 
 ```
 class Read a where
