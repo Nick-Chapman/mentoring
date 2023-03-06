@@ -2,13 +2,15 @@ module Top (main) where
 
 import qualified Interpreter
 import qualified Bytecode
+import qualified MotivateStateMonad
 
 main :: IO ()
 main = do
   putStrLn "*h101*"
   let _ = Interpreter.main
   --print prog
-  Bytecode.main
+  let _ = Bytecode.main
+  MotivateStateMonad.main
   pure ()
 
 
