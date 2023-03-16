@@ -1,9 +1,10 @@
 
 module Bf (main) where
 
+import Data.ByteString.Internal (w2c,c2w)
 import Data.Word (Word8)
-import Data.ByteString.Internal (w2c)
 import System.Environment (getArgs)
+import System.IO (isEOF)
 
 main :: IO ()
 main = do
@@ -17,6 +18,7 @@ main = do
 --seeResult tapes = mapM_ print (zip [0::Int ..] tapes)
 
 data Result = Finish | Step Tape Result | Output Word8 Result
+  | Input (Word8 -> Result)
 
 seeResult :: Result -> IO ()
 seeResult = loop 0
@@ -31,6 +33,11 @@ seeResult = loop 0
         --print ("output",w)
         putStr [w2c w]
         loop (i+1) res
+      Input f -> do
+        w <- do isEOF >>= \case
+                  False -> c2w <$> getChar
+                  True -> pure 0
+        loop (i+1) (f w)
 
 data Op
   = Plus
@@ -81,7 +88,7 @@ exec ops0 t = Step t $ -- here is where we prepend the current tape(state) to th
     Rarrow:ops -> exec ops (doRight t)
     Larrow:ops -> exec ops (doLeft t)
     Dot:ops -> Output (wordAtPoint t) (exec ops t)
-    Comma:ops -> undefined ops
+    Comma:ops -> Input (\w -> exec ops (setWordAtPoint w t))
     bl@(Block ops1) : ops2 ->
       if isZeroAtPoint t
       then exec ops2 t
@@ -96,6 +103,9 @@ foo[bar]qaz...
 
   bar[bar]qaz...
 -}
+
+setWordAtPoint :: Word8 -> Tape -> Tape
+setWordAtPoint w Tape{left,right} = Tape {left,point=w,right}
 
 wordAtPoint :: Tape -> Word8
 wordAtPoint Tape{point} = point
