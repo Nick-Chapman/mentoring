@@ -2,19 +2,35 @@
 module Bf (main) where
 
 import Data.Word (Word8)
+import Data.ByteString.Internal (w2c)
+import System.Environment (getArgs)
 
 main :: IO ()
 main = do
-  putStrLn "[BF mentoring]"
-  let example :: String = "+++[->+>+<<]"
-  go example
+  [path] <- getArgs
+  progString <- readFile path
+  let ops = parse progString
+  let res = execFromStart ops
+  seeResult res
 
-go :: String -> IO () -- TODO: a non-debug runner when we have "." (Dot)
-go s = do
-  let _ops = parse s -- TODO: reinstate when parser is done
-  let ops = [Plus , Plus , Plus , Block [ Minus, Rarrow, Plus, Rarrow, Plus, Larrow, Larrow ]]
-  let tapes = execFromStart ops
-  mapM_ print (zip [0::Int ..] tapes)
+--type Result = [Tape]
+--seeResult tapes = mapM_ print (zip [0::Int ..] tapes)
+
+data Result = Finish | Step Tape Result | Output Word8 Result
+
+seeResult :: Result -> IO ()
+seeResult = loop 0
+  where
+    loop :: Int -> Result -> IO ()
+    loop i = \case
+      Finish -> putStrLn $ "** finished in " ++ show i ++ " steps."
+      Step _tape res -> do
+        --print ("Step",i,_tape)
+        loop (i+1) res
+      Output w res -> do
+        --print ("output",w)
+        putStr [w2c w]
+        loop (i+1) res
 
 data Op
   = Plus
@@ -23,40 +39,53 @@ data Op
   | Larrow
   -- | Lsquare | Rsquare - NO!
   | Block [Op]
-  -- TODO: Dot (for printing)
+  | Dot
+  | Comma
+
 
 parse :: String -> [Op]
-parse = \case
-  [] -> []
-  x:xs ->
-    case parse1 x of
-      Nothing -> parse xs
-      Just op -> op : parse xs
+parse s = loop [] [] s
   where
-    parse1 :: Char -> Maybe Op
-    parse1 c = case c of
-      '+' -> Just Plus
-      '-' -> Just Minus
-      '>' -> Just Rarrow
-      -- TODO: < [ ] .
-      _ -> Nothing
+    loop :: [Op] -> [[Op]] -> [Char] -> [Op]
+    loop acc nest = \case
+      [] ->
+        case nest of
+          [] -> reverse acc
+          _:_ -> error "unclosed["
+      x:xs -> do
+        case x of
+          '+' -> loop (Plus:acc) nest xs
+          '-' -> loop (Minus:acc) nest xs
+          '<' -> loop (Larrow:acc) nest xs
+          '>' -> loop (Rarrow:acc) nest xs
+          '.' -> loop (Dot:acc) nest xs
+          ',' -> loop (Comma:acc) nest xs
+          '[' -> loop [] (acc:nest) xs
+          ']' ->
+            case nest of
+              [] -> error "unexpected]"
+              acc1:nest -> loop (Block (reverse acc) : acc1) nest xs
+          _ ->
+            loop acc nest xs
 
-execFromStart :: [Op] -> [Tape]
+
+execFromStart :: [Op] -> Result
 execFromStart prog = exec prog tape0
 
-exec :: [Op] -> Tape -> [Tape]
-exec ops0 t = t : -- here is where we prepend the current tape(state) to the generated list
+exec :: [Op] -> Tape -> Result
+exec ops0 t = Step t $ -- here is where we prepend the current tape(state) to the generated list
   case ops0 of
-    [] -> []
+    [] -> Finish
     Minus:ops -> exec ops (doMinus t)
     Plus:ops -> exec ops (doPlus t)
     Rarrow:ops -> exec ops (doRight t)
     Larrow:ops -> exec ops (doLeft t)
+    Dot:ops -> Output (wordAtPoint t) (exec ops t)
+    Comma:ops -> undefined ops
     bl@(Block ops1) : ops2 ->
       if isZeroAtPoint t
       then exec ops2 t
       else exec (ops1 ++ bl : ops2) t
-
 
 {-
 foo[bar]qaz...
@@ -67,6 +96,9 @@ foo[bar]qaz...
 
   bar[bar]qaz...
 -}
+
+wordAtPoint :: Tape -> Word8
+wordAtPoint Tape{point} = point
 
 isZeroAtPoint :: Tape -> Bool
 isZeroAtPoint Tape{point} = (point == 0)
