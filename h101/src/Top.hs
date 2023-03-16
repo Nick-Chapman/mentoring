@@ -4,6 +4,7 @@ import qualified Interpreter
 import qualified Bytecode
 import qualified MotivateStateMonad
 import qualified OldBf
+import qualified Bf
 
 main :: IO ()
 main = do
@@ -12,7 +13,8 @@ main = do
   --print prog
   let _ = Bytecode.main
   let _ = MotivateStateMonad.main
-  OldBf.main
+  let _ = OldBf.main
+  Bf.main
   pure ()
 
 
