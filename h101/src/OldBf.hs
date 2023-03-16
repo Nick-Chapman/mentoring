@@ -1,5 +1,5 @@
 
-module Bf(main) where
+module OldBf(main) where
 
 --import qualified Data.Ascii as Ascii (toChar)
 --import Data.Word8 (Word8)
