@@ -8,13 +8,13 @@ import Data.List(intercalate)
 
 main :: IO ()
 main = do
-  let _progString = "++++++++++[->+>++++++++++<<]>>++++.---.+++++++..+++.<."
+  let progString = "++++++++++[->+>++++++++++<<]>>++++.---.+++++++..+++.<."
   --let progString = ".+."
   --let progString = "++[->+<]."
 
-  let _f = "/home/nic/code/bf/b/fib.b"
-  let f = "/home/nic/code/bf/b/mandelbrot.b"
-  progString <- readFile f
+  let f = "/home/nic/code/bf/b/fib.b"
+  let _f = "/home/nic/code/bf/b/mandelbrot.b"
+  _progString <- readFile f
 
   --print ("progString=", progString)
   let prog = parse progString

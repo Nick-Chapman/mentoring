@@ -3,6 +3,7 @@ module Top (main) where
 import qualified Interpreter
 import qualified Bytecode
 import qualified MotivateStateMonad
+import qualified Bf
 
 main :: IO ()
 main = do
@@ -10,7 +11,8 @@ main = do
   let _ = Interpreter.main
   --print prog
   let _ = Bytecode.main
-  MotivateStateMonad.main
+  let _ = MotivateStateMonad.main
+  Bf.main
   pure ()
 
 
