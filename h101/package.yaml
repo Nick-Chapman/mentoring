@@ -51,6 +51,7 @@ ghc-options:
 - -Werror
 - -Wall
 - -Wno-name-shadowing
+- -O2
 
 library:
   source-dirs: src
