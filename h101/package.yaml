@@ -4,7 +4,7 @@ description:         First steps with Haskell
 license:             BSD3
 author:              Nick Chapman
 maintainer:          nic@amadido.co.uk
-github:              https://github.com/Nick-Chapman/mentoring.git
+github:              Nick-Chapman/mentoring.git/h101
 
 extra-source-files:
 - README.md
