@@ -48,6 +48,7 @@ data Op
   | Block [Op]
   | Dot
   | Comma
+    deriving Show
 
 
 parse :: String -> [Op]
@@ -139,3 +140,162 @@ data Tape = Tape { left :: [Word8], point :: Word8, right :: [Word8] }
 
 --instance Show Tape where -- TODO: make a nice pretty printer
 --  show = undefined
+
+----------------------------------------------------------------------
+
+
+{-
+parse :: String -> [Op]
+parse str = loop [] [] str
+  where
+    loop :: [Op] -> [[Op]] -> String -> [Op]
+    loop acc nest = \case
+      [] ->
+        case nest of
+          [] -> reverse acc
+          _:_ -> error "unclosed ["
+      x:rest -> do
+        let
+          collect :: Op -> [Op]
+          collect op = loop (op:acc) nest rest
+        case x of
+          '+' -> collect Plus
+          '-' -> collect Minus
+          '<' -> collect Larrow
+          '>' -> collect Rarrow
+          '.' -> collect Dot
+          ',' -> collect Comma
+          '[' -> loop [] (acc:nest) rest
+          ']' ->
+            case nest of
+              [] -> error "unexpected ]"
+              ops:nest -> loop ( Block (reverse acc) : ops) nest rest
+          _ ->
+            loop acc nest rest
+-}
+----------------------------------------------------------------------
+{-type Arg = ([Op],[[Op]])
+parse :: String -> [Op]
+parse str = loop init str
+  where
+    init :: Arg
+    init = ([],[])
+
+    loop :: Arg -> String -> [Op]
+    loop (acc,nest) = \case
+      [] ->
+        case nest of
+          [] -> reverse acc
+          _:_ -> error "unclosed ["
+      x:rest -> do
+        let
+          collect :: Op -> [Op]
+          collect op = loop (op:acc, nest) rest
+        case x of
+          '+' -> collect Plus
+          '-' -> collect Minus
+          '<' -> collect Larrow
+          '>' -> collect Rarrow
+          '.' -> collect Dot
+          ',' -> collect Comma
+          '[' ->
+            loop ([],acc:nest) rest
+          ']' ->
+            case nest of
+              [] -> error "unexpected ]"
+              ops:nest -> loop ( Block (reverse acc) : ops, nest) rest
+          _ ->
+            loop (acc,nest) rest
+-}
+----------------------------------------------------------------------
+{-data Arg
+parse :: String -> [Op]
+parse str = loop init str
+  where
+    init :: Arg
+    init = undefined
+
+    loop :: Arg -> String -> [Op]
+    loop arg = \case
+      [] -> undefined arg
+      x:xs -> do
+        let
+          collect :: Op -> [Op]
+          collect = undefined xs
+        case x of
+          '+' -> collect Plus
+          '-' -> collect Minus
+          '<' -> collect Larrow
+          '>' -> collect Rarrow
+          '.' -> collect Dot
+          ',' -> collect Comma
+          '[' -> undefined
+          ']' -> undefined
+          _ -> undefined
+-}
+----------------------------------------------------------------------
+
+{-type Res = ([Op],Maybe String)
+
+parse :: String -> [Op]
+parse str = finish (loop str)
+  where
+    finish :: Res -> [Op]
+    finish = \case
+      (ops,Nothing) -> ops
+      (_,Just{}) -> error "unexpected ]"
+
+    loop :: String -> Res
+    loop = \case
+      [] -> ([],Nothing)
+      x:xs -> do
+        let
+          collect :: Op -> Res
+          collect op = do
+            let (ops,leftovermaybe) = loop xs
+            (op:ops,leftovermaybe)
+        case x of
+          '+' -> collect Plus
+          '-' -> collect Minus
+          '<' -> collect Larrow
+          '>' -> collect Rarrow
+          '.' -> collect Dot
+          ',' -> collect Comma
+          '[' ->
+            case loop xs of
+              (_,Nothing) -> error "unclosed ["
+              (opsInBlock,Just leftover) -> do
+                let (ops,leftovermaybe) = loop leftover
+                (Block opsInBlock : ops, leftovermaybe)
+          ']' ->
+            ([],Just xs)
+          _ ->
+            loop xs
+-}
+
+----------------------------------------------------------------------
+{-data Res
+parse :: String -> [Op]
+parse str = finish (loop str)
+  where
+    finish :: Res -> [Op]
+    finish = undefined
+
+    loop :: String -> Res
+    loop = \case
+      [] -> undefined
+      x:xs -> do
+        let
+          collect :: Op -> Res
+          collect = undefined xs
+        case x of
+          '+' -> collect Plus
+          '-' -> collect Minus
+          '<' -> collect Larrow
+          '>' -> collect Rarrow
+          '.' -> collect Dot
+          ',' -> collect Comma
+          '[' -> undefined
+          ']' -> undefined
+          _ -> undefined
+-}
