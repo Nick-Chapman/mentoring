@@ -5,16 +5,18 @@ import qualified Bytecode
 import qualified MotivateStateMonad
 import qualified OldBf
 import qualified Bf
+import qualified Sol
 
 main :: IO ()
 main = do
-  putStrLn "*h101*"
+  --putStrLn "*h101*"
   let _ = Interpreter.main
   --print prog
   let _ = Bytecode.main
   let _ = MotivateStateMonad.main
   let _ = OldBf.main
-  Bf.main
+  let _ = Bf.main
+  Sol.main
   pure ()
 
 
