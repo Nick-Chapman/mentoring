@@ -1,10 +1,12 @@
 
 module Sol (main) where
 
+import Control.Monad (when)
 import Data.Set (Set)
 import Text.Printf (printf)
 import qualified Data.Set as Set
-import Control.Monad (when)
+import Data.Bits
+import Data.Word (Word64)
 
 main :: IO ()
 main = do
@@ -27,8 +29,9 @@ searchTop = search 1 Set.empty 0 [] initBoard
     search :: Int -> Set Board -> Int -> [Move] -> Board -> IO SearchResult
     search count bad depth acc board = do
       let win = isWin board
+      --printf "%d: %s -- %s\n" count (show board) (if win then "WIN" else "no")
       let ms = movesOf board
-      when (count `mod` 300000 == 0) $ printf "%d: #bad=%d  depth=%d  %s  #moves=%d%s\n" count (Set.size bad) depth (show board) (length ms) (if win then " -- WIN" else "")
+      when (count `mod` 1000000 == 0) $ printf "%d: #bad=%d  depth=%d  %s  #moves=%d%s\n" count (Set.size bad) depth (show board) (length ms) (if win then " -- WIN" else "")
       if board `Set.member` bad then do --printf "BAD\n"
                                         pure (Fail count bad) else do
       if win then pure (Solution count (reverse acc)) else do
@@ -55,30 +58,10 @@ isLegalMove b m = case tryMove b m of Just{} -> True; Nothing -> False
 applyMove :: Board -> Move -> Board
 applyMove b m = case tryMove b m of Just b' -> b'; Nothing -> undefined
 
-
-data Board = B (Set Int) deriving (Eq,Ord)
 data Move = M { on1 :: Int, on2 :: Int, off :: Int }
-
-instance Show Board where
-  show (B set) = show (Set.toList set)
 
 instance Show Move where
   show M{on1,on2,off} = printf "%d/%d-->%d" on1 on2 off
-
-tryMove :: Board -> Move -> Maybe Board
-tryMove (B set) M{on1,on2,off} =
-  if Set.member on1 set && Set.member on2 set && not (Set.member off set)
-  then Just (B (Set.insert off (Set.delete on1 (Set.delete on2 set))))
-  else Nothing
-
-initBoard :: Board
---initBoard = B (Set.fromList[0,3,4,7,8,9,10]) --7 marbles
---initBoard = B (Set.fromList[0,3,4,7,8,9,10,32]) --7+1 marbles (no solution
---initBoard = B (Set.fromList ([0.. 15] ++ [17..32])) -- all 32 marbles
-initBoard = B (Set.fromList ([0.. 15] ++ [17..32])) -- missing corner marble
-
-isWin :: Board -> Bool
-isWin (B set) = set == Set.singleton 16
 
 {-
        00 01 02
@@ -113,3 +96,43 @@ allMoves = all
       ,                         M 11 18 25
       ,                         M 12 19 26
       ]
+
+
+initBoard :: Board
+--initBoard = makeBoard [0,3,4,7,8,9,10] --7 marbles
+--initBoard = makeBoard [0,3,4,7,8,9,10,32] --7+1 marbles (no solution
+initBoard = makeBoard ([0.. 15] ++ [17..32]) -- all 32 marbles
+--initBoard = makeBoard ([0.. 15] ++ [17..31]) -- missing corner marble
+
+
+-- bit-based rep: solve in 0.25
+
+newtype Board = B Word64 deriving (Eq,Ord)
+instance Show Board where show (B w) = printf "%09x" w
+makeBoard :: [Int] -> Board
+makeBoard xs = B $ foldl (.|.) 0 [ 1 `shiftL` x | x <- xs ]
+isWin :: Board -> Bool
+isWin (B state) = state == center
+  where center = 1 `shiftL` 16
+tryMove :: Board -> Move -> Maybe Board
+tryMove (B state) M{on1,on2,off} = if legal then Just (B updated) else Nothing
+  where
+    legal = isOn on1 && isOn on2 && not (isOn off)
+    updated = state `clearBit` on1 `clearBit` on2 `setBit` off
+    isOn = (state `testBit`)
+
+
+-- original rep: solve in 1.8s
+{-
+newtype Board = B (Set Int) deriving (Eq,Ord)
+instance Show Board where show (B set) = show (Set.toList set)
+makeBoard :: [Int] -> Board
+makeBoard xs = B (Set.fromList xs)
+tryMove :: Board -> Move -> Maybe Board
+tryMove (B set) M{on1,on2,off} =
+  if Set.member on1 set && Set.member on2 set && not (Set.member off set)
+  then Just (B (Set.insert off (Set.delete on1 (Set.delete on2 set))))
+  else Nothing
+isWin :: Board -> Bool
+isWin (B set) = set == Set.singleton 16
+-}
