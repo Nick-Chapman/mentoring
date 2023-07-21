@@ -6,6 +6,7 @@ import qualified MotivateStateMonad
 import qualified OldBf
 import qualified Bf
 import qualified Sol
+import qualified Cps
 
 main :: IO ()
 main = do
@@ -16,7 +17,8 @@ main = do
   let _ = MotivateStateMonad.main
   let _ = OldBf.main
   let _ = Bf.main
-  Sol.main
+  let _ = Sol.main
+  Cps.main
   pure ()
 
 
