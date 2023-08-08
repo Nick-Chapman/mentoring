@@ -7,6 +7,7 @@ import qualified OldBf
 import qualified Bf
 import qualified Sol
 import qualified Cps
+import qualified ParserCombinators
 
 main :: IO ()
 main = do
@@ -18,7 +19,8 @@ main = do
   let _ = OldBf.main
   let _ = Bf.main
   let _ = Sol.main
-  Cps.main
+  let _ = Cps.main
+  ParserCombinators.main
   pure ()
 
 
