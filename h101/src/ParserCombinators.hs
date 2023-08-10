@@ -1,5 +1,5 @@
 
-module ParserCombinators (main) where
+module ParserCombinators where --(main) where
 
 import qualified Data.Char as Char (ord)
 
@@ -7,29 +7,35 @@ main :: IO ()
 main = do
   let _ = print (parseJson "[123,true,null]")
 
-  print (expect (parseLower "") Nothing)
-  print (expect (parseLower "456xyz") Nothing)
-  print (expect (parseLower "foo123") (Just ('f',"oo123")))
+  test lower "" Nothing
+  test lower "456xyz" Nothing
+  test lower "foo123" (Just ('f',"oo123"))
 
-  print (expect (parseDigit "") Nothing)
-  print (expect (parseDigit "foo123") Nothing)
-  print (expect (parseDigit "456xyz") (Just (4,"56xyz")))
+  test digit "" Nothing
+  test digit "foo123" Nothing
+  test digit "456xyz" (Just (4,"56xyz"))
 
-  print (expect (parseLowerThenDigit "") Nothing)
-  print (expect (parseLowerThenDigit "x") Nothing)
-  print (expect (parseLowerThenDigit "xy") Nothing)
-  print (expect (parseLowerThenDigit "x1y") (Just (('x',1),"y")))
-  print (expect (parseLowerThenDigit "1xy") Nothing)
+  test lowerThenDigit "" Nothing
+  test lowerThenDigit "x" Nothing
+  test lowerThenDigit "xy" Nothing
+  test lowerThenDigit "x1y" (Just (('x',1),"y"))
+  test lowerThenDigit "1xy" Nothing
 
-  print (expect (parseTwoDigitNumber "") Nothing)
-  print (expect (parseTwoDigitNumber "2") Nothing)
-  print (expect (parseTwoDigitNumber "23") (Just (23,"")))
-  print (expect (parseTwoDigitNumber "234") (Just (23,"4")))
+  test twoDigitNumber "" Nothing
+  test twoDigitNumber "2" Nothing
+  test twoDigitNumber "23" (Just (23,""))
+  test twoDigitNumber "234" (Just (23,"4"))
 
-  print (expect (parseLowerOrDigit "") Nothing)
-  print (expect (parseLowerOrDigit "xy89") (Just (Left 'x', "y89")))
-  print (expect (parseLowerOrDigit "89xy") (Just (Right 8, "9xy")))
-  print (expect (parseLowerOrDigit "WHAT") Nothing)
+  test lowerOrDigit "" Nothing
+  test lowerOrDigit "xy89" (Just (Left 'x', "y89"))
+  test lowerOrDigit "89xy" (Just (Right 8, "9xy"))
+  test lowerOrDigit "WHAT" Nothing
+
+
+
+test :: (Eq a,Show a) => Parser a -> String -> Maybe (a,String) -> IO ()
+test p input expected = do
+  print (expect (parse p input) expected)
 
 
 expect :: (Eq a, Show a) => a -> a -> a
@@ -51,44 +57,93 @@ data Json
   deriving Show
 
 
-parseLower :: String -> Maybe (Char,String)
-parseDigit :: String -> Maybe (Int,String)
+lower :: Parser Char
+lower = satisfy (\x -> x >= 'a' && x <= 'z')
 
-parseLowerThenDigit :: String -> Maybe ((Char,Int),String)
-parseTwoDigitNumber :: String -> Maybe (Int,String)
+digit :: Parser Int
+digit = mapP numOfDigitAscii (satisfy (\x -> x >= '0' && x <= '9'))
+  where
+    numOfDigitAscii :: Char -> Int
+    numOfDigitAscii x = Char.ord x - Char.ord '0'
 
-parseLowerOrDigit :: String -> Maybe (Either Char Int, String)
+lowerThenDigit :: Parser (Char,Int)
+lowerThenDigit = lower `sequenceP` digit
 
-parseLower = \case
-  "" -> Nothing
-  x:xs -> if x >= 'a' && x <= 'z' then Just (x,xs) else Nothing
+twoDigitNumber :: Parser Int
+twoDigitNumber =
+  mapP (\(d1,d2) -> 10*d1 + d2) (digit `sequenceP` digit)
 
-parseDigit = \case
-  "" -> Nothing
-  x:xs -> if x >= '0' && x <= '9' then Just (num,xs) else Nothing
-    where num = Char.ord x - Char.ord '0'
-
-parseLowerThenDigit s =
-  case parseLower s of
-    Nothing -> Nothing
-    Just (x,s) ->
-      case parseDigit s of
-        Nothing -> Nothing
-        Just (d,s) -> Just ((x,d),s)
+lowerOrDigit :: Parser (Either Char Int)
+lowerOrDigit =
+  mapP Left lower
+  `altP`
+  mapP Right digit
 
 
-parseTwoDigitNumber s =
-  case parseDigit s of
-    Nothing -> Nothing
-    Just (d1,s) ->
-      case parseDigit s of
-        Nothing -> Nothing
-        Just (d2,s) -> Just ( 10*d1 + d2, s)
 
-parseLowerOrDigit s =
-  case parseLower s of
-    Just (x,s) -> Just (Left x,s)
-    Nothing ->
-      case parseDigit s of
-        Just (d,s) -> Just (Right d,s)
-        Nothing -> Nothing
+json :: Parser Json
+json = alts
+  [ mapP JNumber number
+  , mapP JString string
+  , mapP (\() -> JNull) jnull
+  ]
+
+number :: Parser Int
+number = undefined
+
+string :: Parser String
+string = undefined
+
+jnull :: Parser ()
+jnull = undefined
+
+
+
+----------------------------------------------------------------------
+
+alts :: [Parser a] -> Parser a
+alts ps = case ps of
+  [] -> failP
+  p:ps -> p `altP` alts ps
+
+
+data Parser a = Parser (String -> Maybe (a,String))
+
+
+parse :: Parser a -> String -> Maybe (a,String)
+parse (Parser f) input = f input
+
+failP :: Parser a
+failP = Parser (\_ -> Nothing)
+
+altP :: Parser a -> Parser a -> Parser a
+altP (Parser fa1) (Parser fa2) =
+  Parser (\s ->
+            case fa1 s of
+              Just (x,s) -> Just (x,s)
+              Nothing ->
+                case fa2 s of
+                  Just (x,s) -> Just (x,s)
+                  Nothing -> Nothing)
+
+sequenceP :: Parser a -> Parser b -> Parser (a,b)
+sequenceP (Parser fa) (Parser fb) =
+  Parser (\s -> case fa s of
+             Nothing -> Nothing
+             Just (a,s) ->
+               case fb s of
+                 Nothing -> Nothing
+                 Just (b,s) -> Just ((a,b),s))
+
+satisfy :: (Char -> Bool) -> Parser Char
+satisfy pred =
+  Parser (\s -> case s of
+             "" -> Nothing
+             x:xs -> if pred x then Just (x,xs) else Nothing)
+
+mapP :: (a -> b) -> Parser a -> Parser b
+mapP f (Parser pa) =
+  Parser (\s -> case (pa s) of
+             Nothing -> Nothing
+             Just (a,s) -> Just (f a, s)
+            )
