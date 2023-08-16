@@ -8,6 +8,7 @@ import qualified Bf
 import qualified Sol
 import qualified Cps
 import qualified ParserCombinators
+import qualified PC2
 
 main :: IO ()
 main = do
@@ -20,7 +21,8 @@ main = do
   let _ = Bf.main
   let _ = Sol.main
   let _ = Cps.main
-  ParserCombinators.main
+  let _ = ParserCombinators.main
+  PC2.main
   pure ()
 
 
