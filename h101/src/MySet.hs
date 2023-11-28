@@ -6,6 +6,16 @@ main :: IO ()
 main = do
   putStrLn "*MySet*"
 
+  let set1 = fromList [1::Int,2,5,4,3,2,6]
+  see ("set1",set1)
+  let set2 = remove 3 set1
+  see ("set2",set2)
+
+  let (_,set3) = case removeMin set1 of Just x -> x; Nothing -> undefined
+  see ("set3",set3)
+  let (set4,_) = case removeMax set1 of Just x -> x; Nothing -> undefined
+  see ("set4",set4)
+
   let a = fromList [3::Int,6,9]
   let b = fromList [2,6]
   see ("A",a)
@@ -14,12 +24,10 @@ main = do
   see ("I",intersection a b)
   see ("D",diff a b)
 
-  let set1 = fromList [1::Int,2,5,4,3,2,6]
-  see ("set1",set1)
-  let set2 = remove 3 set1
-  see ("set2",set2)
+  see ("big",fromList [1::Int ..100])
 
   -- More methodical testing
+
   pure ()
 
   where
@@ -27,7 +35,7 @@ main = do
       print (tag,"set:",set)
       print (tag,"size:",size set)
       print (tag,"invariant:",check True (invariant set))
-      let _ = print (tag,"balanced?", check True (balanced set))
+      print (tag,"balanced?", check True (balanced set))
       pure ()
 
 check :: (Eq a, Show a) => a -> a -> a
@@ -57,8 +65,8 @@ data Set a = Empty | Node (Set a) a (Set a)
 -- Single a === Node Empty a Empty
 
 instance Show a => Show (Set a) where
-  --show = pretty
-  show = show . toList
+  show = _pretty
+  --show = show . toList
 
 _pretty :: Show a => Set a -> String -- show structure
 _pretty set = "{" ++ walk set ++ "}"
@@ -95,8 +103,6 @@ empty = Empty
 singleton :: a -> Set a
 singleton x = Node empty x empty
 
--- TODO: maintain balance invariant dring insert/remove
-
 balanced :: Set a -> Bool
 balanced = \case
   Empty -> True
@@ -111,16 +117,16 @@ insert :: Ord a => a -> Set a -> Set a
 insert x = \case
   Empty -> singleton x
   n@(Node l e r) -> if x == e then n else
-    if x < e then Node (insert x l) e r else
+    if x < e then mkNode (insert x l) e r else
     -- assert (x > e)
-    Node l e (insert x r)
+    mkNode l e (insert x r)
 
 remove :: Ord a => a -> Set a -> Set a
 remove x = \case
   Empty -> Empty
   Node l e r ->
-    if x < e then Node (remove x l) e r else
-    if x > e then Node l e (remove x r) else
+    if x < e then mkNode (remove x l) e r else
+    if x > e then mkNode l e (remove x r) else
     -- assert (x==e)
     abut (l,r)
 
@@ -132,5 +138,37 @@ abut = \case
   (Node l1 e1 r1, Node l2 e2 r2) -> do
     -- assert (e1 < e2)
     -- pick one of the two alternatives....
-    -- Node (Node l1 e1 (abut (r1,l2))) e2 r2 -- [1]
-    Node l1 e1 (Node (abut (r1,l2)) e2 r2) -- [2]
+    -- mkNode (mkNode l1 e1 (abut (r1,l2))) e2 r2 -- [1]
+    mkNode l1 e1 (mkNode (abut (r1,l2)) e2 r2) -- [2]
+
+
+-- rebalance during node construction
+
+mkNode :: Ord a => Set a -> a -> Set a -> Set a
+mkNode l e r = do
+  let u = size l - size r
+  if u <=1 && u >= -1 then Node l e r else
+    if u < 0 then
+      case removeMin r of
+        Nothing -> undefined -- (size r >= 2)
+        Just (m,r) -> mkNode (insert e l) m r
+    else
+      case removeMax l of
+        Nothing -> undefined -- (size l >= 2)
+        Just (l,m) -> mkNode l m (insert e r)
+
+removeMin :: Ord a => Set a -> Maybe (a,Set a)
+removeMin = \case
+  Empty -> Nothing
+  Node l e r ->
+    case removeMin l of
+      Just (m,l) -> Just (m, mkNode l e r)
+      Nothing -> Just (e,r)
+
+removeMax :: Ord a => Set a -> Maybe (Set a,a)
+removeMax = \case
+  Empty -> Nothing
+  Node l e r ->
+    case removeMax r of
+      Just (r,m) -> Just (mkNode l e r, m)
+      Nothing -> Just (l,e)
