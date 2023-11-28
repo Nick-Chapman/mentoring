@@ -9,6 +9,7 @@ import qualified Sol
 import qualified Cps
 import qualified ParserCombinators
 import qualified PC2
+import qualified MySet
 
 main :: IO ()
 main = do
@@ -22,7 +23,8 @@ main = do
   let _ = Sol.main
   let _ = Cps.main
   let _ = ParserCombinators.main
-  PC2.main
+  let _ = PC2.main
+  MySet.main
   pure ()
 
 
