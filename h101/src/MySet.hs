@@ -1,41 +1,22 @@
-module MySet (main) where
+
+module MySet where --(main) where
 
 import Data.List.Ordered (isSorted)
 
 main :: IO ()
 main = do
   putStrLn "*MySet*"
-
-  let set1 = fromList [1::Int,2,5,4,3,2,6]
-  see ("set1",set1)
-  let set2 = remove 3 set1
-  see ("set2",set2)
-
-  let (_,set3) = case removeMin set1 of Just x -> x; Nothing -> undefined
-  see ("set3",set3)
-  let (set4,_) = case removeMax set1 of Just x -> x; Nothing -> undefined
-  see ("set4",set4)
-
-  let a = fromList [3::Int,6,9]
-  let b = fromList [2,6]
-  see ("A",a)
-  see ("B",b)
-  see ("U",union a b)
-  see ("I",intersection a b)
-  see ("D",diff a b)
-
   see ("big",fromList [1::Int ..100])
-
-  -- More methodical testing
-
   pure ()
 
   where
     see (tag,set) = do
       print (tag,"set:",set)
       print (tag,"size:",size set)
+      print (tag,"height:",height set)
       print (tag,"invariant:",check True (invariant set))
-      print (tag,"balanced?", check True (balanced set))
+      print (tag,"balancedB?", check True (balancedB set))
+      --print (tag,"balancedA?", check True (balancedA set))
       pure ()
 
 check :: (Eq a, Show a) => a -> a -> a
@@ -97,21 +78,16 @@ size = \case
   Empty -> 0
   Node l _ r -> size l + 1 + size r
 
+height :: Set a -> Int -- TODO: should be constant time op
+height = \case
+  Empty -> 0
+  Node l _ r -> 1 + max (height l) (height r)
+
 empty :: Set a
 empty = Empty
 
 singleton :: a -> Set a
 singleton x = Node empty x empty
-
-balanced :: Set a -> Bool
-balanced = \case
-  Empty -> True
-  Node l _ r ->
-    absdiff (size l) (size r) < 2
-    && balanced l
-    && balanced r
-  where
-    absdiff x y = if x < y then y-x else x-y
 
 insert :: Ord a => a -> Set a -> Set a
 insert x = \case
@@ -141,11 +117,28 @@ abut = \case
     -- mkNode (mkNode l1 e1 (abut (r1,l2))) e2 r2 -- [1]
     mkNode l1 e1 (mkNode (abut (r1,l2)) e2 r2) -- [2]
 
-
 -- rebalance during node construction
 
 mkNode :: Ord a => Set a -> a -> Set a -> Set a
-mkNode l e r = do
+--mkNode = Node -- no balancing
+--mkNode = mkNode_BalanceA -- strict
+mkNode = mkNode_BalanceB --weaker; easier
+
+
+{-
+-- very strict balance criteria
+balancedA :: Set a -> Bool
+balancedA = \case
+  Empty -> True
+  Node l _ r ->
+    absdiff (size l) (size r) < 2
+    && balancedA l
+    && balancedA r
+  where
+    absdiff x y = if x < y then y-x else x-y
+
+mkNode_BalanceA :: Ord a => Set a -> a -> Set a -> Set a
+mkNode_BalanceA l e r = do
   let u = size l - size r
   if u <=1 && u >= -1 then Node l e r else
     if u < 0 then
@@ -156,19 +149,46 @@ mkNode l e r = do
       case removeMax l of
         Nothing -> undefined -- (size l >= 2)
         Just (l,m) -> mkNode l m (insert e r)
+  where
+    removeMin :: Ord a => Set a -> Maybe (a,Set a)
+    removeMin = \case
+      Empty -> Nothing
+      Node l e r ->
+        case removeMin l of
+          Just (m,l) -> Just (m, mkNode l e r)
+          Nothing -> Just (e,r)
 
-removeMin :: Ord a => Set a -> Maybe (a,Set a)
-removeMin = \case
-  Empty -> Nothing
-  Node l e r ->
-    case removeMin l of
-      Just (m,l) -> Just (m, mkNode l e r)
-      Nothing -> Just (e,r)
+    removeMax :: Ord a => Set a -> Maybe (Set a,a)
+    removeMax = \case
+      Empty -> Nothing
+      Node l e r ->
+        case removeMax r of
+          Just (r,m) -> Just (mkNode l e r, m)
+          Nothing -> Just (l,e)
+-}
 
-removeMax :: Ord a => Set a -> Maybe (Set a,a)
-removeMax = \case
-  Empty -> Nothing
-  Node l e r ->
-    case removeMax r of
-      Just (r,m) -> Just (mkNode l e r, m)
-      Nothing -> Just (l,e)
+-- weaker; easier to maintain. still good for complexity
+balancedB :: Set a -> Bool
+balancedB = \case
+  Empty -> True
+  Node l _ r ->
+    absdiff (height l) (height r) < 2
+    && balancedB l
+    && balancedB r
+  where
+    absdiff x y = if x < y then y-x else x-y
+
+mkNode_BalanceB :: Ord a => Set a -> a -> Set a -> Set a
+mkNode_BalanceB l e r = do
+  let u = height l - height r
+  if u <=1 && u >= -1 then Node l e r else
+    if u < 0
+    then
+      case r of
+        Empty -> undefined -- impossible: height(r) >= 2
+        Node rl re rr -> Node (Node l e rl) re rr
+    else
+      case l of
+        Empty -> undefined  -- impossible: height(l) >= 2
+        Node ll le lr ->
+          Node ll le (Node lr e r)
