@@ -40,9 +40,26 @@ diff x y =
 fromList :: Ord a => [a] -> Set a
 fromList = foldr insert empty
 
-data Set a = Empty | Node (Set a) a (Set a)
 -- TODO: optimize with a special case for singletons...
 -- Single a === Node Empty a Empty
+
+data Set a
+  = Empty
+  | Node { left :: Set a
+         , elem :: a
+         , right :: Set a
+         , sizeNode :: Int
+         , heightNode :: Int
+         }
+
+nodeSH :: Ord a => Set a -> a -> Set a -> Set a
+nodeSH left elem right =
+  Node { left
+       , elem
+       , right
+       , sizeNode = 1 + size left + size right
+       , heightNode = 1 + max (height left) (height right)
+       }
 
 instance Show a => Show (Set a) where
   show = pretty
@@ -52,7 +69,8 @@ pretty set = "{" ++ walk set ++ "}"
   where
     walk = \case
       Empty -> "."
-      Node l e r -> "(" ++ walk l ++ show e ++ walk r ++ ")"
+      Node{left=l,elem=e,right=r} ->
+        "(" ++ walk l ++ show e ++ walk r ++ ")"
 
 invariant :: Ord a => Set a -> Bool
 invariant set = isSorted (toList set) -- TODO: and no dups.
@@ -63,33 +81,41 @@ toList = walk []
     walk :: [a] -> Set a -> [a]
     walk after = \case
       Empty -> after
-      Node l e r -> walk (e : walk after r) l
+      Node{left=l,elem=e,right=r} ->
+        walk (e : walk after r) l
 
 member :: Ord a => a -> Set a -> Bool
 member x = \case
   Empty -> False
-  Node l e r -> x == e || member x (if x < e then l else r)
+  Node{left=l,elem=e,right=r} ->
+    x == e || member x (if x < e then l else r)
 
-size :: Set a -> Int -- TODO: should be constant time op
+size :: Set a -> Int
 size = \case
   Empty -> 0
-  Node l _ r -> size l + 1 + size r
+  Node{sizeNode=x} -> x
 
-height :: Set a -> Int -- TODO: should be constant time op
+height :: Set a -> Int
 height = \case
   Empty -> 0
-  Node l _ r -> 1 + max (height l) (height r)
+  Node{heightNode=x} -> x
 
 empty :: Set a
 empty = Empty
 
 singleton :: a -> Set a
-singleton x = Node empty x empty
+singleton elem = Node
+  { left = empty
+  , elem
+  , right = empty
+  , sizeNode = 1
+  , heightNode = 1
+  }
 
 insert :: Ord a => a -> Set a -> Set a
 insert x = \case
   Empty -> singleton x
-  n@(Node l e r) -> if x == e then n else
+  n@Node{left=l,elem=e,right=r} -> if x == e then n else
     if x < e then mkNode (insert x l) e r else
     -- assert (x > e)
     mkNode l e (insert x r)
@@ -97,7 +123,7 @@ insert x = \case
 remove :: Ord a => a -> Set a -> Set a
 remove x = \case
   Empty -> Empty
-  Node l e r ->
+  Node {left=l,elem=e,right=r} ->
     if x < e then mkNode (remove x l) e r else
     if x > e then mkNode l e (remove x r) else
     -- assert (x==e)
@@ -108,16 +134,15 @@ abut = \case
   (Empty,Empty) -> Empty
   (Empty,set@Node{}) -> set
   (set@Node{},Empty) -> set
-  (Node l1 e1 r1, Node l2 e2 r2) -> do
+  (Node{left=l1,elem=e1,right=r1}, Node{left=l2,elem=e2,right=r2}) -> do
     -- assert (e1 < e2)
-    mkNode l1 e1 (mkNode (abut (r1,l2)) e2 r2) -- [2]
-
+    mkNode l1 e1 (mkNode (abut (r1,l2)) e2 r2)
 
 -- weaker; easier to maintain. still good for complexity
 balanced :: Set a -> Bool
 balanced = \case
   Empty -> True
-  Node l _ r ->
+  Node {left=l,right=r} ->
     absdiff (height l) (height r) < 2
     && balanced l
     && balanced r
@@ -128,14 +153,14 @@ balanced = \case
 mkNode :: Ord a => Set a -> a -> Set a -> Set a
 mkNode l e r = do
   let u = height l - height r
-  if u <=1 && u >= -1 then Node l e r else
+  if u <=1 && u >= -1 then nodeSH l e r else
     if u < 0
     then
       case r of
         Empty -> undefined -- impossible: height(r) >= 2
-        Node rl re rr -> Node (Node l e rl) re rr
+        Node {left=rl,elem=re,right=rr} -> nodeSH (nodeSH l e rl) re rr
     else
       case l of
         Empty -> undefined  -- impossible: height(l) >= 2
-        Node ll le lr ->
-          Node ll le (Node lr e r)
+        Node {left=ll,elem=le,right=lr} ->
+          nodeSH ll le (nodeSH lr e r)
