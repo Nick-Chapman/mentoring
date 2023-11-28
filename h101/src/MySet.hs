@@ -1,5 +1,5 @@
 
-module MySet where --(main) where
+module MySet (main, Set, union, intersection, diff, remove) where
 
 import Data.List.Ordered (isSorted)
 
@@ -15,8 +15,7 @@ main = do
       print (tag,"size:",size set)
       print (tag,"height:",height set)
       print (tag,"invariant:",check True (invariant set))
-      print (tag,"balancedB?", check True (balancedB set))
-      --print (tag,"balancedA?", check True (balancedA set))
+      print (tag,"balanced?", check True (balanced set))
       pure ()
 
 check :: (Eq a, Show a) => a -> a -> a
@@ -46,16 +45,14 @@ data Set a = Empty | Node (Set a) a (Set a)
 -- Single a === Node Empty a Empty
 
 instance Show a => Show (Set a) where
-  show = _pretty
-  --show = show . toList
+  show = pretty
 
-_pretty :: Show a => Set a -> String -- show structure
-_pretty set = "{" ++ walk set ++ "}"
+pretty :: Show a => Set a -> String -- show structure
+pretty set = "{" ++ walk set ++ "}"
   where
     walk = \case
       Empty -> "."
       Node l e r -> "(" ++ walk l ++ show e ++ walk r ++ ")"
-
 
 invariant :: Ord a => Set a -> Bool
 invariant set = isSorted (toList set) -- TODO: and no dups.
@@ -113,73 +110,23 @@ abut = \case
   (set@Node{},Empty) -> set
   (Node l1 e1 r1, Node l2 e2 r2) -> do
     -- assert (e1 < e2)
-    -- pick one of the two alternatives....
-    -- mkNode (mkNode l1 e1 (abut (r1,l2))) e2 r2 -- [1]
     mkNode l1 e1 (mkNode (abut (r1,l2)) e2 r2) -- [2]
 
--- rebalance during node construction
-
-mkNode :: Ord a => Set a -> a -> Set a -> Set a
---mkNode = Node -- no balancing
---mkNode = mkNode_BalanceA -- strict
-mkNode = mkNode_BalanceB --weaker; easier
-
-
-{-
--- very strict balance criteria
-balancedA :: Set a -> Bool
-balancedA = \case
-  Empty -> True
-  Node l _ r ->
-    absdiff (size l) (size r) < 2
-    && balancedA l
-    && balancedA r
-  where
-    absdiff x y = if x < y then y-x else x-y
-
-mkNode_BalanceA :: Ord a => Set a -> a -> Set a -> Set a
-mkNode_BalanceA l e r = do
-  let u = size l - size r
-  if u <=1 && u >= -1 then Node l e r else
-    if u < 0 then
-      case removeMin r of
-        Nothing -> undefined -- (size r >= 2)
-        Just (m,r) -> mkNode (insert e l) m r
-    else
-      case removeMax l of
-        Nothing -> undefined -- (size l >= 2)
-        Just (l,m) -> mkNode l m (insert e r)
-  where
-    removeMin :: Ord a => Set a -> Maybe (a,Set a)
-    removeMin = \case
-      Empty -> Nothing
-      Node l e r ->
-        case removeMin l of
-          Just (m,l) -> Just (m, mkNode l e r)
-          Nothing -> Just (e,r)
-
-    removeMax :: Ord a => Set a -> Maybe (Set a,a)
-    removeMax = \case
-      Empty -> Nothing
-      Node l e r ->
-        case removeMax r of
-          Just (r,m) -> Just (mkNode l e r, m)
-          Nothing -> Just (l,e)
--}
 
 -- weaker; easier to maintain. still good for complexity
-balancedB :: Set a -> Bool
-balancedB = \case
+balanced :: Set a -> Bool
+balanced = \case
   Empty -> True
   Node l _ r ->
     absdiff (height l) (height r) < 2
-    && balancedB l
-    && balancedB r
+    && balanced l
+    && balanced r
   where
     absdiff x y = if x < y then y-x else x-y
 
-mkNode_BalanceB :: Ord a => Set a -> a -> Set a -> Set a
-mkNode_BalanceB l e r = do
+-- rebalance during node construction
+mkNode :: Ord a => Set a -> a -> Set a -> Set a
+mkNode l e r = do
   let u = height l - height r
   if u <=1 && u >= -1 then Node l e r else
     if u < 0
