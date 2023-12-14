@@ -10,6 +10,7 @@ import qualified Cps
 import qualified ParserCombinators
 import qualified PC2
 import qualified MySet
+import qualified PlayMemo
 
 main :: IO ()
 main = do
@@ -24,7 +25,8 @@ main = do
   let _ = Cps.main
   let _ = ParserCombinators.main
   let _ = PC2.main
-  MySet.main
+  let _ = MySet.main
+  PlayMemo.main
   pure ()
 
 
