@@ -11,6 +11,7 @@ import qualified ParserCombinators
 import qualified PC2
 import qualified MySet
 import qualified PlayMemo
+import qualified InstructionSelection
 
 main :: IO ()
 main = do
@@ -26,7 +27,8 @@ main = do
   let _ = ParserCombinators.main
   let _ = PC2.main
   let _ = MySet.main
-  PlayMemo.main
+  let _ = PlayMemo.main
+  InstructionSelection.main
   pure ()
 
 
