@@ -5,7 +5,7 @@
 
 long counter = 0; // to make you happy!
 
-void f() {
+void my_function() {
   long thing = 42; // pick a value so we can see it in the prints
   printf("%ld\n",++counter); // increment then print. so we first see a 1.
 
@@ -24,13 +24,13 @@ void f() {
 int main() {
 #ifdef DEBUG
  L0: // This is label. Normally the only thing you can do is goto a label.
-  f();
+  my_function();
  L1:
   printf("L0=%p\n",&&L0); // This && is jinky gcc syntax to take the address of a label
   printf("L1=%p\n",&&L1);
   printf("diff=%ld\n",(long)&&L1 - (long)&&L0); // I see 5 here. Means code for "f();" is 5 words long
 #else
-  f();
+  my_function();
 #endif
 }
 
