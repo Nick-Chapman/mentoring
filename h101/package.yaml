@@ -42,6 +42,7 @@ default-extensions:
 - NondecreasingIndentation
 - NumericUnderscores
 - RankNTypes
+- RecursiveDo
 - ScopedTypeVariables
 - TypeApplications
 - TypeFamilies
