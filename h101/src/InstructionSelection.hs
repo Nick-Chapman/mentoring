@@ -4,11 +4,15 @@ import Data.Map (Map)
 import Data.Word (Word8)
 import Text.Printf (printf)
 import qualified Data.Map as Map
+import qualified Is2 (main)
 
 type Byte = Word8
 
 main :: IO ()
-main = do
+main = Is2.main
+
+_main :: IO ()
+_main = do
   print "*instruction-selection*"
   printf "env: %s\n"  (show env0)
   mapM_ (run env0) examples
