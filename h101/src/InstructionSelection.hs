@@ -5,12 +5,13 @@ import Data.Word (Word8)
 import Text.Printf (printf)
 import qualified Data.Map as Map
 --import qualified Is2 (main)
-import qualified Is3 (main)
+--import qualified Is3 (main)
+import qualified Is4 (main)
 
 type Byte = Word8
 
 main :: IO ()
-main = Is3.main
+main = Is4.main
 
 _main :: IO ()
 _main = do
