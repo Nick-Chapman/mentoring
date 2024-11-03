@@ -32,6 +32,7 @@ default-extensions:
 - BangPatterns
 - DuplicateRecordFields
 - EmptyCase
+- EmptyDataDeriving
 - FlexibleContexts
 - GADTs
 - GeneralizedNewtypeDeriving
