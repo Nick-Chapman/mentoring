@@ -14,6 +14,8 @@ import qualified PlayMemo
 import qualified InstructionSelection
 import qualified MonadMasterClass
 import qualified Live
+import qualified Master2
+import qualified Master3
 
 main :: IO ()
 main = do
@@ -32,7 +34,9 @@ main = do
   let _ = PlayMemo.main
   let _ = InstructionSelection.main
   let _ = MonadMasterClass.main
-  Live.main
+  let _ = Live.main
+  let _ = Master2.main
+  Master3.main
   pure ()
 
 
