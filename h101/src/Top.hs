@@ -16,6 +16,7 @@ import qualified MonadMasterClass
 import qualified Live
 import qualified Master2
 import qualified Master3
+import qualified Sudoku
 
 main :: IO ()
 main = do
@@ -36,7 +37,8 @@ main = do
   let _ = MonadMasterClass.main
   let _ = Live.main
   let _ = Master2.main
-  Master3.main
+  let _ = Master3.main
+  Sudoku.main
   pure ()
 
 
