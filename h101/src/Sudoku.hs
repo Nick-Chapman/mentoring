@@ -40,8 +40,8 @@ parse s = do
                         , c /= '.' ]
 
 trace :: Show a => a -> IO ()
-trace x = print x
---trace _ = pure ()
+--trace x = print x
+trace _ = pure ()
 
 {-
 loop :: Int -> Grid -> IO (Maybe Grid)
