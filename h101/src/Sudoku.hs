@@ -8,15 +8,29 @@ import Data.Set (Set,union,(\\))
 import Data.Set as Set (toList,fromList)
 import qualified Data.Map as Map
 
+import System.Environment (getArgs)
+
 main :: IO ()
 main = do
-  s <- readFile "example.sudoku"
+  args <- getArgs
+  let filename = parseCommandLine args
+  s <- readFile filename
   let g = parse s
   print g
+{-
   loop 0 g >>= \case
     Nothing -> print "no solution"
     Just g' ->
       print g'
+-}
+  sols :: [Grid] <- loopN 0 g
+  print (length sols)
+
+
+parseCommandLine :: [String] -> String
+parseCommandLine = \case
+  [x] -> x
+  args -> error (show ("parseCommandLine",args))
 
 parse :: String -> Grid
 parse s = do
@@ -29,6 +43,7 @@ trace :: Show a => a -> IO ()
 trace x = print x
 --trace _ = pure ()
 
+{-
 loop :: Int -> Grid -> IO (Maybe Grid)
 loop i g = do
   case infer g of
@@ -54,6 +69,36 @@ loop i g = do
               Just g' -> pure (Just g')
         in
         inner (zip [1..] ds)
+-}
+
+loopN :: Int -> Grid -> IO [Grid]
+loopN i g = do
+  case infer g of
+    Done -> do
+      print g
+      pure [g]
+    Fail -> do
+      trace ("step", i,"Fail")
+      pure []
+    Infer p d -> do
+      trace ("step", i,"infer",p,d)
+      let g' = extendG g (p,d)
+      loopN (i+1) g'
+    Choice p ds -> do
+      trace ("step", i,"Choice",p,"alts=",ds)
+      let
+        inner :: [(Int,Digit)] -> IO [Grid]
+        inner = \case
+          [] -> pure []
+          (_j,d1):ds -> do
+            trace ("step", i,"Choice",p,"try#",_j, "digit=",d1)
+            sols1 <- loopN (i+1) (extendG g (p,d1))
+            sols2 <- inner ds
+            pure (sols1 ++ sols2)
+        in
+        inner (zip [1..] ds)
+
+
 
 
 data Res = Done | Fail | Infer Pos Digit | Choice Pos [Digit]
