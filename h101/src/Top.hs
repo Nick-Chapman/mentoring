@@ -17,6 +17,7 @@ import qualified Live
 import qualified Master2
 import qualified Master3
 import qualified Sudoku
+import qualified RegAlloc
 
 main :: IO ()
 main = do
@@ -38,7 +39,8 @@ main = do
   let _ = Live.main
   let _ = Master2.main
   let _ = Master3.main
-  Sudoku.main
+  let _ = Sudoku.main
+  RegAlloc.main
   pure ()
 
 
