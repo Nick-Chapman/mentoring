@@ -39,8 +39,8 @@ main = do
   let _ = Live.main
   let _ = Master2.main
   let _ = Master3.main
-  let _ = Sudoku.main
-  RegAlloc.main
+  Sudoku.main
+  let _ = RegAlloc.main
   pure ()
 
 
