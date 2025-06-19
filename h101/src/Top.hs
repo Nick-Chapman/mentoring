@@ -17,6 +17,7 @@ import qualified Live
 import qualified Master2
 import qualified Master3
 import qualified RegAlloc
+import qualified Lisp
 
 main :: IO ()
 main = do
@@ -38,7 +39,8 @@ main = do
   let _ = Live.main
   let _ = Master2.main
   let _ = Master3.main
-  RegAlloc.main
+  let _ = RegAlloc.main
+  Lisp.main
   pure ()
 
 
