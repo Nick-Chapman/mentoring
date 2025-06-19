@@ -7,12 +7,12 @@ import qualified Data.Map as Map
 
 main :: IO ()
 main = do
-  v <- runM (eval [] example)
+  v <- runM (eval [] triangle)
   print v
 
 -- no parser: construct the AST for our fav example by hand
-example :: Exp
-example = App [App [App[thrice,thrice],inc],Num 100]
+_example :: Exp
+_example = App [App [App[thrice,thrice],inc],Num 100]
   where
   thrice = Lam [f] (Lam [x] (App [Var f,App [Var f,App [Var f, Var x]]]))
   inc = Lam [y] (App [add,Var y,Num 1])
@@ -20,6 +20,14 @@ example = App [App [App[thrice,thrice],inc],Num 100]
   x = "x"
   y = "y"
   f = "f"
+
+triangle :: Exp
+triangle = LetDef tri rhs use
+  where
+    rhs = Lam [n] (If0 (Var n) (Num 0) (Add [Var n, App [Var tri, Add [Var n, Num (-1)]]]))
+    use = App [Var tri,Num 6]
+    n = "n"
+    tri = "tri"
 
 -- values
 data Value = VNil | VNum Int | VClo Closure deriving Show
@@ -35,6 +43,8 @@ data Exp
   | App [Exp]
   | Lam [Id] Exp
   | Set Id Exp
+  | If0 Exp Exp Exp
+  | LetDef Id Exp Exp
 
 -- eval/apply evaluation
 -- delegating some semantics to "M" -- MLook/MSet/MExtend
@@ -57,6 +67,16 @@ eval env = \case
     value <- eval env exp
     MSet env name value
     pure VNil
+  LetDef x rhs body -> do
+    env' <- MExtend env [x]
+    v <- eval env' rhs
+    MSet env' x v
+    eval env' body
+  If0 i t e -> do
+    vi <- eval env i
+    if (case vi of VNum 0 -> True; _ -> False)
+      then eval env t
+      else eval env e
 
 apply :: Value -> [Value] -> M Value
 apply = \case
