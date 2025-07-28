@@ -1,0 +1,35 @@
+
+executable-name:
+  echo play.exe > executable-name
+
+include ../../../jenga/rulelib/haskell.jenga
+
+main-entry:
+  echo Top > main-entry
+
+ghc-version:
+  echo 9.8.4 > ghc-version
+
+snapshot:
+  echo 0c0e09a39c717a2ea362c88b471e2ca3bfed98555f446ae62de384c509723563 > snapshot
+
+ghc-options:
+  echo -Werror >>ghc-options
+  echo -Wall >>ghc-options
+  echo -Wno-name-shadowing >>ghc-options
+
+default-extensions:
+  echo LambdaCase >>default-extensions
+  echo DuplicateRecordFields >>default-extensions
+  echo GADTs >>default-extensions
+  echo NondecreasingIndentation >>default-extensions
+
+pkgdb: snapshot ghc-version
+  echo /home/nic/.stack/snapshots/x86_64-linux/$(cat snapshot)/$(cat ghc-version)/pkgdb >pkgdb
+
+packages:
+  touch packages
+  echo data-ordlist >> packages
+  echo bytestring >> packages
+  echo clock >> packages
+  echo mtl >> packages

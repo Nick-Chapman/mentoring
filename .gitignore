@@ -1,9 +1,8 @@
 *~
 cint/_build
-
 .stack-work
 *.cabal
 stack.yaml.lock
-
 *.o
 *.exe
+,jenga
