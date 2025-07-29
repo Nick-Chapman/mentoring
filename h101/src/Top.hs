@@ -18,6 +18,7 @@ import qualified Master2
 import qualified Master3
 import qualified RegAlloc
 import qualified Lisp
+import qualified Green
 
 main :: IO ()
 main = do
@@ -40,7 +41,8 @@ main = do
   let _ = Master2.main
   let _ = Master3.main
   let _ = RegAlloc.main
-  Lisp.main
+  let _ = Lisp.main
+  Green.main
   pure ()
 
 
