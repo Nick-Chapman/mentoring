@@ -29,7 +29,9 @@ pkgdb: snapshot ghc-version
 
 packages:
   touch packages
-  echo data-ordlist >> packages
   echo bytestring >> packages
   echo clock >> packages
+  echo data-ordlist >> packages
   echo mtl >> packages
+  echo process >> packages
+  echo unix >> packages
