@@ -18,7 +18,7 @@ import qualified Master2
 import qualified Master3
 import qualified RegAlloc
 import qualified Lisp
-import qualified Green
+import qualified PrepGreen
 import qualified Fork
 
 main :: IO ()
@@ -43,7 +43,8 @@ main = do
   let _ = Master3.main
   let _ = RegAlloc.main
   let _ = Lisp.main
-  let _ = Green.main
+
+  let _ = PrepGreen.main
   Fork.main
   pure ()
 

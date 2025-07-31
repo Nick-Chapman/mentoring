@@ -1,5 +1,5 @@
 
-module Green (main) where
+module PrepGreen (main) where
 
 import Control.Monad (ap,liftM)
 
