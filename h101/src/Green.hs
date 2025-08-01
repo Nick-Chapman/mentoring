@@ -3,9 +3,11 @@ module Green (main) where
 
 import Control.Monad (ap,liftM)
 
+import Data.IORef (IORef,newIORef,readIORef,writeIORef)
+
 {-
-main :: IO ()
-main = do
+_main :: IO ()
+_main = do
   print (subsqr 3 4)
 
 subsqr :: Int -> Int -> Int
@@ -14,13 +16,8 @@ subsqr x y = subsqr' x y (\ans -> ans)
 
 subsqr' :: Int -> Int -> (Int -> r) -> r
 subsqr' x y k = do
-{-  let k1 xx = do
-        let k2 yy = k (xx+yy)
-        sqr' y k2
-  sqr' x k1-}
 
   sqr' x (\xx -> sqr' y (\yy -> k (xx+yy)))
-  --sqr' x $ \xx -> sqr' y $ \yy -> k (xx+yy)
 
 sqr' :: Int -> (Int -> r) -> r
 sqr' n k = k (n*n)
@@ -29,20 +26,50 @@ sqr' n k = k (n*n)
 
 main :: IO ()
 main = runM $ do
-  xs <- thingA
-  Print (show ("done",xs))
+  (xs,ys) <- Par thingA thingB
+  Print (show ("done",xs,ys))
+
+{-par :: M a -> M b -> M (a,b)
+par ma mb = do
+  a <- ma
+  b <- mb
+  pure (a,b)-}
 
 thingA :: M [Int]
 thingA = do
-  a <- thingAsub 'a'
-  b <- thingAsub 'b'
-  c <- thingAsub 'c'
-  pure [a,b,c]
+  sequence [ thingAsub c | c <- "abcde" ]
+
+{-parallel :: [M a] -> M [a]
+parallel = \case
+  [] -> pure []
+--  [m] -> m
+  m:ms -> do
+    (a,as) <- Par m (parallel ms)
+    pure (a:as)-}
 
 thingAsub :: Char -> M Int
 thingAsub c = do
   r <- Fresh
   Print (show ("thingA",c,r))
+  --Print (show ("thingAA",c,r))
+  --Print (show ("thingAAA",c,r))
+  Yield
+  pure r
+
+
+thingB :: M [Int]
+thingB = do
+  x <- thingBsub 'x'
+  y <- thingBsub 'y'
+  z <- thingBsub 'z'
+  pure [x,y,z]
+
+thingBsub :: Char -> M Int
+thingBsub c = do
+  r <- Fresh
+  r2 <- Fresh
+  Print (show ("thingB",c,r,r2))
+  Yield
   pure r
 
 ----------------------------------------------------------------------
@@ -56,53 +83,84 @@ data M a where -- GADT
   Bind :: M a -> (a -> M b) -> M b
   Print :: String -> M ()
   Fresh :: M Int
+  Par :: M a -> M b -> M (a,b)
+  Yield :: M ()
 
-data State = State { u :: Int }
+data State = State { u :: Int, jobs :: [Job] }
 
 runM :: M () -> IO ()
-runM m = do
-  (State{u},()) <- loop m state0
-  putStrLn (show ("final",u))
-  pure ()
+runM m0 = do
+
+  loop m0 state0 kFinal
 
   where
-    state0 :: State = State { u = 0 }
+    kFinal :: State -> () -> IO ()
+    kFinal State{u=_} () = do
+      --putStrLn (show ("final",u))
+      pure ()
 
-    loop :: M a -> State -> IO (State,a)
-    loop m s = case m of
+    state0 :: State = State { u = 0, jobs = [] }
+
+    loop :: M a -> State -> (State -> a -> IO ()) -> IO ()
+    loop m s k = case m of
       Pure a -> do
-        pure (s,a)
+        k s a
 
       Bind m f -> do
-        (s',a) <- loop m s
-        loop (f a) s'
+        loop m s (\s a -> loop (f a) s k)
 
       Print str -> do
         putStrLn ("PRINT:" ++ str)
-        pure (s,())
+        k s ()
 
       Fresh -> do
         let State{u} = s
-        let s' = State { u = u+1 }
-        pure (s',u)
+        let s' = s { u = u+1 }
+        k s' u
 
+      Par ma mb -> do
 
-_runM :: M () -> IO () -- TODO tomorrow
-_runM m = undefined m state0 loop
+        vA :: IORef (Maybe a) <- newIORef Nothing
+        vB :: IORef (Maybe b) <- newIORef Nothing
 
-  where
-    state0 :: State = State { u = 0 }
+        let
+          ka :: State -> a -> IO ()
+          ka s a = do
+            readIORef vB >>= \case
+              Just b -> k s (a,b)
+              Nothing -> do
+                writeIORef vA (Just a)
+                restore s
 
-    loop :: M a -> State -> (State -> a -> IO ()) -> IO ()
-    loop m _s _k = case m of
-      Pure a -> do
-        undefined a
+          kb :: State -> b -> IO ()
+          kb s b = do
+            readIORef vA >>= \case
+              Just a -> k s (a,b)
+              Nothing -> do
+                writeIORef vB (Just b)
+                restore s
 
-      Bind m f -> do
-        undefined m f
+        let jb = Job mb kb
+        let State{jobs} = s
+        let s' = s { jobs = jb : jobs }
+        loop ma s' ka
 
-      Print str -> do
-        undefined str
+      Yield -> do
+        let State{jobs} = s
+        let me = Job (pure ()) k
+        let s' = s { jobs = jobs ++ [me] }
+        restore s'
 
-      Fresh -> do
-        undefined
+    restore :: State -> IO ()
+    restore s = do
+        let State{jobs} = s
+        case jobs of
+          [] -> error "restore[]"
+          j1:jobs -> do
+            let s' = s { jobs }
+            case j1 of
+              Job m k ->
+                loop m s' k
+
+data Job where
+  Job :: M a -> (State -> a -> IO ()) -> Job
