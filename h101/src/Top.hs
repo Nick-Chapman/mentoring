@@ -21,6 +21,7 @@ import qualified Lisp
 import qualified PrepGreen
 import qualified Fork
 import qualified Green
+import qualified Nite
 
 main :: IO ()
 main = do
@@ -44,5 +45,6 @@ main = do
   let _ = Lisp.main
   let _ = PrepGreen.main
   let _ = Fork.main
-  Green.main
+  let _ = Green.main
+  Nite.main
   pure ()
