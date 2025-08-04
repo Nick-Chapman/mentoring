@@ -10,45 +10,28 @@ extra-source-files:
 - README.md
 
 dependencies:
-- ansi-terminal
 - array
-- async
 - base >= 4.7 && < 5
 - bytestring
 - clock
 - containers
 - data-ordlist
-- extra
-- haskeline
 - mtl
-- split
-- text
-- time
-- transformers
-- word8
 - process
 - unix
 
 default-extensions:
 - BangPatterns
 - DuplicateRecordFields
-- EmptyCase
 - EmptyDataDeriving
-- FlexibleContexts
 - GADTs
 - GeneralizedNewtypeDeriving
 - InstanceSigs
 - LambdaCase
-- MultiWayIf
 - NamedFieldPuns
 - NondecreasingIndentation
 - NumericUnderscores
-- RankNTypes
-- RecursiveDo
 - ScopedTypeVariables
-- TypeApplications
-- TypeFamilies
-- UndecidableInstances
 
 ghc-options:
 - -Werror
