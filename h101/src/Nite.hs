@@ -14,41 +14,121 @@ import Text.Printf (printf)
 --import Data.ByteString.Internal (w2c)
 --import System.Posix.IO.ByteString (fdRead)
 
+import System.IO qualified as IO (stdout)
+import System.IO (hFlush,hPutStr)
+
+import Prelude hiding (putStr)
+
 main :: IO ()
 main = do
   taOrig <- enableRawMode
-  write "Nite..."
   let
     loop state = do
+      display state
       key <- readKey
       pure (processKey state key) >>= \case
         Nothing -> do
-          write "Quitting..."
+          putOut (clearEntireScreen ++ home ++ "Quitting...\r\n")
           disableRawMode taOrig
           pure ()
         Just state -> do
-          display state
-          loop state
+          loop (incFrames state)
+            where incFrames state@State{numFrames=i} = state {numFrames = i+1}
 
   loop state0
 
 display :: State -> IO ()
-display State{lastKey} = do
-  write (show lastKey)
+display state = do
+  putOut (composit state)
 
-write :: String -> IO ()
-write s = putStr (s ++ "\r\n")
+composit :: State -> String
+composit State{screenRows,numFrames,cx,cy} =
+  home ++
+  concat
+  [ line ++ clearRestOfLine ++ (if r < screenRows-1 then "\r\n" else "")
+  | r <- [0..screenRows-1]
+  , let
+      line =
+        if r==welcomeRow
+        then printf "~ [#frames:%d, cx=%d, cy=%d]" numFrames cx cy
+        else "~"
+  ]
+  ++ moveCursorTo cx cy
+  where
+    welcomeRow = 3
+
+clearEntireScreen :: String
+clearEntireScreen = "\x1b[2J"
+
+clearRestOfLine :: String
+clearRestOfLine = "\x1b[K"
+
+home :: String
+home = "\x1b[H"
+
+moveCursorTo :: Int -> Int -> String
+moveCursorTo x y = printf "\x1b[%d;%dH" (y+1) (x+1)
+
+putOut :: String -> IO () -- tutorial: changes mode to flush always?
+putOut s = do
+  hPutStr IO.stdout s
+  hFlush IO.stdout
+  pure ()
 
 processKey :: State -> Key -> Maybe State
-processKey state key =
+processKey state@State{lastKeys} key =
   case key of
     Key 'q' -> Nothing
-    key -> Just $ state { lastKey = key }
+    key -> do
+      state <- pure $ state { lastKeys = key : lastKeys }
+      let action = keyBinding key
+      state <- pure (processAction state action)
+      Just state
 
-data State = State { lastKey :: Key }
+keyBinding :: Key -> Action
+keyBinding = \case
+  Key 'a' -> GoLeft
+  Key 'd' -> GoRight
+  Key 'w' -> GoUp
+  Key 's' -> GoDown
+  k -> IgnoreKey k
+
+data Action
+  = GoLeft
+  | GoRight
+  | GoUp
+  | GoDown
+  | IgnoreKey Key
+
+processAction :: State -> Action -> State
+processAction s@State{cx,cy,screenRows,screenCols} = \case
+  GoLeft -> s { cx = bound (0,screenCols) (cx - 1) }
+  GoRight -> s { cx = bound (0,screenCols) (cx + 1) }
+  GoUp -> s { cy = bound (0,screenRows) (cy - 1) }
+  GoDown -> s { cy = bound (0,screenRows) (cy + 1) }
+  IgnoreKey{} -> s
+
+bound :: (Int,Int) -> Int -> Int
+bound (lo,hi) x = min (hi-1) (max lo x)
+
+data State = State
+  { screenCols :: Int
+  , screenRows :: Int
+  , lastKeys :: [Key]
+  , numFrames :: Int
+  , cx :: Int
+  , cy :: Int
+  }
 
 state0 :: State
-state0 = State { lastKey = NoKey }
+state0 = State
+  { screenRows = 10
+  , screenCols = 40
+  , lastKeys = []
+  , numFrames = 0
+  , cx = 0
+  , cy = 0
+  }
 
 enableRawMode :: IO TerminalAttributes
 enableRawMode = do
