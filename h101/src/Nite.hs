@@ -16,12 +16,23 @@ import Text.Printf (printf)
 
 import System.IO qualified as IO (stdout)
 import System.IO (hFlush,hPutStr)
-
 import Prelude hiding (putStr)
+import Par4 (int,lit,parse)
 
 main :: IO ()
 main = do
   taOrig <- enableRawMode
+  (screenCols,screenRows) <- discoverScreenSize
+  let
+    state0 :: State
+    state0 = State
+      { screenRows
+      , screenCols
+      , lastKeys = []
+      , frameNum = 0
+      , cx = 0
+      , cy = 0
+      }
   let
     loop state = do
       display state
@@ -33,29 +44,68 @@ main = do
           pure ()
         Just state -> do
           loop (incFrames state)
-            where incFrames state@State{numFrames=i} = state {numFrames = i+1}
+            where incFrames state@State{frameNum=i} = state {frameNum = i+1}
 
   loop state0
+
+discoverScreenSize :: IO (Int,Int)
+discoverScreenSize = do
+  putOut (bottomRight ++ "\x1b[6n]")
+  s <- readPositionReport
+  case parse "positionReport" report s of
+    Right res -> pure res
+    Left err -> error err
+  where
+    report = do
+      lit '\x1b'
+      lit '['
+      y <- int
+      lit ';'
+      x <- int
+      lit 'R'
+      pure (x,y)
+
+readPositionReport :: IO String
+readPositionReport = loop ""
+  where
+    loop acc = do
+      readKey >>= \case
+        Key 'R' -> pure $ reverse ('R':acc)
+        Key c -> loop (c:acc)
+        NoKey -> undefined -- loop acc
+
+bottomRight :: String
+bottomRight = "\x1b[999C\x1b[999B"
+
 
 display :: State -> IO ()
 display state = do
   putOut (composit state)
 
 composit :: State -> String
-composit State{screenRows,numFrames,cx,cy} =
+composit state@State{frameNum,cx,cy,screenRows,screenCols} =
   home ++
   concat
   [ line ++ clearRestOfLine ++ (if r < screenRows-1 then "\r\n" else "")
   | r <- [0..screenRows-1]
   , let
       line =
-        if r==welcomeRow
-        then printf "~ [#frames:%d, cx=%d, cy=%d]" numFrames cx cy
-        else "~"
+        if r==2 then printf "~ [#frames:%d, cx=%d, cy=%d, col=%d, rows=%d]"
+                     frameNum cx cy screenCols screenRows else
+          if r>=seekeyRow && r<seekeyRow+numSeeKeys then "~ " ++ seeRecentKey (r-seekeyRow) state else
+            "~"
   ]
   ++ moveCursorTo cx cy
   where
-    welcomeRow = 3
+    seekeyRow = 4
+    numSeeKeys = 10
+
+seeRecentKey :: Int -> State -> String
+seeRecentKey i State{frameNum,lastKeys} = do
+  let (n,key) = head (drop i (zip [frameNum,frameNum-1..] (lastKeys ++ repeat NoKey)))
+  printf "%d: %s" n (show key)
+
+  where head = \case [] -> error "head"; x:_ -> x
 
 clearEntireScreen :: String
 clearEntireScreen = "\x1b[2J"
@@ -115,19 +165,9 @@ data State = State
   { screenCols :: Int
   , screenRows :: Int
   , lastKeys :: [Key]
-  , numFrames :: Int
+  , frameNum :: Int
   , cx :: Int
   , cy :: Int
-  }
-
-state0 :: State
-state0 = State
-  { screenRows = 10
-  , screenCols = 40
-  , lastKeys = []
-  , numFrames = 0
-  , cx = 0
-  , cy = 0
   }
 
 enableRawMode :: IO TerminalAttributes
