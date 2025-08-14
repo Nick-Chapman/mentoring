@@ -18,11 +18,31 @@ import System.IO qualified as IO (stdout)
 import System.IO (hFlush,hPutStr)
 import Prelude hiding (putStr)
 import Par4 (int,lit,parse)
+import Data.List(intercalate)
+
+
+data State = State
+  { screenCols :: Int
+  , screenRows :: Int
+  , lastKeys :: [Key]
+  , frameNum :: Int
+  , curx :: Int
+  , cury :: Int
+  , offx :: Int
+  , offy :: Int
+  }
 
 main :: IO ()
 main = do
   taOrig <- enableRawMode
   (screenCols,screenRows) <- discoverScreenSize
+  putOut clearEntireScreen
+
+  let
+    reset message = do
+      putOut (clearEntireScreen ++ home ++ message ++ "\r\n")
+      disableRawMode taOrig
+
   let
     state0 :: State
     state0 = State
@@ -30,18 +50,17 @@ main = do
       , screenCols
       , lastKeys = []
       , frameNum = 0
-      , cx = 0
-      , cy = 0
+      , curx = 0
+      , cury = 0
+      , offx = 0
+      , offy = 0
       }
   let
     loop state = do
       display state
       key <- readKey
       pure (processKey state key) >>= \case
-        Nothing -> do
-          putOut (clearEntireScreen ++ home ++ "Quitting...\r\n")
-          disableRawMode taOrig
-          pure ()
+        Nothing -> reset "Quitting!"
         Just state -> do
           loop (incFrames state)
             where incFrames state@State{frameNum=i} = state {frameNum = i+1}
@@ -82,24 +101,6 @@ display :: State -> IO ()
 display state = do
   putOut (composit state)
 
-composit :: State -> String
-composit state@State{frameNum,cx,cy,screenRows,screenCols} =
-  home ++
-  concat
-  [ line ++ clearRestOfLine ++ (if r < screenRows-1 then "\r\n" else "")
-  | r <- [0..screenRows-1]
-  , let
-      line =
-        if r==2 then printf "~ [#frames:%d, cx=%d, cy=%d, col=%d, rows=%d]"
-                     frameNum cx cy screenCols screenRows else
-          if r>=seekeyRow && r<seekeyRow+numSeeKeys then "~ " ++ seeRecentKey (r-seekeyRow) state else
-            "~"
-  ]
-  ++ moveCursorTo cx cy
-  where
-    seekeyRow = 4
-    numSeeKeys = 10
-
 seeRecentKey :: Int -> State -> String
 seeRecentKey i State{frameNum,lastKeys} = do
   let (n,key) = head (drop i (zip [frameNum,frameNum-1..] (lastKeys ++ repeat NoKey)))
@@ -135,40 +136,43 @@ processKey state@State{lastKeys} key =
       state <- pure (processAction state action)
       Just state
 
-keyBinding :: Key -> Action
-keyBinding = \case
-  Key 'a' -> GoLeft
-  Key 'd' -> GoRight
-  Key 'w' -> GoUp
-  Key 's' -> GoDown
-  k -> IgnoreKey k
-
 data Action
-  = GoLeft
-  | GoRight
-  | GoUp
-  | GoDown
+  = CurLeft
+  | CurRight
+  | CurUp
+  | CurDown
+  | OffLeft
+  | OffRight
+  | OffUp
+  | OffDown
   | IgnoreKey Key
 
+keyBinding :: Key -> Action
+keyBinding = \case
+  Key 'a' -> CurLeft
+  Key 'd' -> CurRight
+  Key 'w' -> CurUp
+  Key 's' -> CurDown
+  Key 'j' -> OffLeft
+  Key 'l' -> OffRight
+  Key 'i' -> OffUp
+  Key 'k' -> OffDown
+  k -> IgnoreKey k
+
 processAction :: State -> Action -> State
-processAction s@State{cx,cy,screenRows,screenCols} = \case
-  GoLeft -> s { cx = bound (0,screenCols) (cx - 1) }
-  GoRight -> s { cx = bound (0,screenCols) (cx + 1) }
-  GoUp -> s { cy = bound (0,screenRows) (cy - 1) }
-  GoDown -> s { cy = bound (0,screenRows) (cy + 1) }
+processAction s@State{offx,offy,curx,cury,screenRows,screenCols} = \case
+  CurLeft -> s { curx = bound (0,screenCols) (curx - 1) }
+  CurRight -> s { curx = bound (0,screenCols) (curx + 1) }
+  CurUp -> s { cury = bound (0,screenRows) (cury - 1) }
+  CurDown -> s { cury = bound (0,screenRows) (cury + 1) }
+  OffLeft -> s { offx = max 0 (offx - 1) }
+  OffRight -> s { offx = max 0 (offx + 1) }
+  OffUp -> s { offy = max 0 (offy - 1) }
+  OffDown -> s { offy = max 0 (offy + 1) }
   IgnoreKey{} -> s
 
 bound :: (Int,Int) -> Int -> Int
 bound (lo,hi) x = min (hi-1) (max lo x)
-
-data State = State
-  { screenCols :: Int
-  , screenRows :: Int
-  , lastKeys :: [Key]
-  , frameNum :: Int
-  , cx :: Int
-  , cy :: Int
-  }
 
 enableRawMode :: IO TerminalAttributes
 enableRawMode = do
@@ -216,3 +220,27 @@ instance Show Key where
       if isControl c
       then printf "%d" (ord c)
       else printf "%d ('%c')" (ord c) c
+
+----------------------------------------------------------------------
+
+data Buf = Buf [String] -- what is visible
+
+composit :: State -> String
+composit state = ren (see state) state
+
+see :: State -> Buf
+see state@State{frameNum,curx,cury,screenRows,screenCols} =
+  Buf square
+  where
+    square =
+      [ printf "[#frames:%d, curx=%d, cury=%d, col=%d, rows=%d]" frameNum curx cury screenCols screenRows ]
+      ++
+      [ seeRecentKey i state | i <- [0..frameNum] ]
+
+ren :: Buf -> State -> String
+ren (Buf lines) State{curx,cury,offx,offy,screenRows,screenCols} =
+  home ++
+  intercalate "\r\n" [ take screenCols (drop offx line) ++ clearRestOfLine
+                     | line <- take screenRows (drop offy lines)
+                     ]
+  ++ moveCursorTo curx cury
