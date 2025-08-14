@@ -30,10 +30,17 @@ data State = State
   , cury :: Int
   , offx :: Int
   , offy :: Int
+  , buf :: Buf
+  , debug :: Bool
   }
+
+
+--readFile :: String -> IO Buf
+--readFile = undefined
 
 main :: IO ()
 main = do
+  buf <- Buf . lines <$> readFile "/tmp/example"
   taOrig <- enableRawMode
   (screenCols,screenRows) <- discoverScreenSize
   putOut clearEntireScreen
@@ -54,6 +61,8 @@ main = do
       , cury = 0
       , offx = 0
       , offy = 0
+      , buf
+      , debug = False
       }
   let
     loop state = do
@@ -88,10 +97,9 @@ readPositionReport :: IO String
 readPositionReport = loop ""
   where
     loop acc = do
-      readKey >>= \case
-        Key 'R' -> pure $ reverse ('R':acc)
-        Key c -> loop (c:acc)
-        NoKey -> undefined -- loop acc
+      getChar >>= \case
+        'R' -> pure $ reverse ('R':acc)
+        c -> loop (c:acc)
 
 bottomRight :: String
 bottomRight = "\x1b[999C\x1b[999B"
@@ -100,6 +108,9 @@ bottomRight = "\x1b[999C\x1b[999B"
 display :: State -> IO ()
 display state = do
   putOut (composit state)
+
+composit :: State -> String
+composit state = ren (bufOfState state) state
 
 seeRecentKey :: Int -> State -> String
 seeRecentKey i State{frameNum,lastKeys} = do
@@ -137,7 +148,9 @@ processKey state@State{lastKeys} key =
       Just state
 
 data Action
-  = CurLeft
+  = IgnoreKey Key
+  | ToggleDebug
+  | CurLeft
   | CurRight
   | CurUp
   | CurDown
@@ -145,7 +158,10 @@ data Action
   | OffRight
   | OffUp
   | OffDown
-  | IgnoreKey Key
+  | BeginingOfLine
+  | EndOfLine
+  | Home
+  | End
 
 keyBinding :: Key -> Action
 keyBinding = \case
@@ -157,19 +173,36 @@ keyBinding = \case
   Key 'l' -> OffRight
   Key 'i' -> OffUp
   Key 'k' -> OffDown
-  k -> IgnoreKey k
+  Key 'x' -> ToggleDebug
+  Escape '<' -> Home
+  Escape '>' -> End
+  k@(Key _) -> IgnoreKey k
+  k@NoKey -> IgnoreKey k
+  k@(Escape _) -> IgnoreKey k
 
 processAction :: State -> Action -> State
-processAction s@State{offx,offy,curx,cury,screenRows,screenCols} = \case
+processAction s@State{offx,offy,curx,cury,screenRows,screenCols,debug} = \case
   CurLeft -> s { curx = bound (0,screenCols) (curx - 1) }
   CurRight -> s { curx = bound (0,screenCols) (curx + 1) }
-  CurUp -> s { cury = bound (0,screenRows) (cury - 1) }
-  CurDown -> s { cury = bound (0,screenRows) (cury + 1) }
+  CurUp ->
+    if cury == 0 then s { offy = max 0 (offy - 1) } else
+      s { cury = bound (0,screenRows) (cury - 1) }
+  CurDown ->
+    if cury == screenRows - 1 then s { offy = offy + 1 } else
+      s { cury = bound (0,screenRows) (cury + 1) }
+
   OffLeft -> s { offx = max 0 (offx - 1) }
   OffRight -> s { offx = max 0 (offx + 1) }
   OffUp -> s { offy = max 0 (offy - 1) }
   OffDown -> s { offy = max 0 (offy + 1) }
   IgnoreKey{} -> s
+  ToggleDebug -> s { debug = not debug }
+  BeginingOfLine -> undefined
+  EndOfLine -> undefined
+  Home -> s { offy = 0, cury = 0 }
+  End -> s { offy = lengthBuf (bufOfState s) - screenRows
+           , cury = screenRows - 1
+           }
 
 bound :: (Int,Int) -> Int -> Int
 bound (lo,hi) x = min (hi-1) (max lo x)
@@ -199,7 +232,12 @@ disableRawMode ta = do
 readKey :: IO Key
 readKey = do
   c <- getChar
-  pure (Key c)
+  case c of
+    '\x1b' -> do
+      c <- getChar
+      pure (Escape c)
+    _ -> do
+      pure (Key c)
 
 {-readKey :: IO Key
 readKey = do
@@ -211,26 +249,28 @@ readKey = do
         [c] -> pure (Key (w2c c))
         _ -> error "readKey/>1"-}
 
-data Key = NoKey | Key Char
+data Key = NoKey | Key Char | Escape Char
 
 instance Show Key where
   show = \case
     NoKey -> "[NoKey]"
+    Escape c -> "(escape) " ++ show (Key c)
     Key c ->
       if isControl c
-      then printf "%d" (ord c)
-      else printf "%d ('%c')" (ord c) c
+      then printf "%x" (ord c)
+      else printf "%x ('%c')" (ord c) c
 
 ----------------------------------------------------------------------
 
-data Buf = Buf [String] -- what is visible
+data Buf = Buf [String]
 
-composit :: State -> String
-composit state = ren (see state) state
+lengthBuf :: Buf -> Int
+lengthBuf (Buf xs) = length xs
 
-see :: State -> Buf
-see state@State{frameNum,curx,cury,screenRows,screenCols} =
-  Buf square
+
+bufOfState :: State -> Buf
+bufOfState state@State{debug,buf,frameNum,curx,cury,screenRows,screenCols} =
+  if debug then Buf square else buf
   where
     square =
       [ printf "[#frames:%d, curx=%d, cury=%d, col=%d, rows=%d]" frameNum curx cury screenCols screenRows ]
@@ -241,6 +281,6 @@ ren :: Buf -> State -> String
 ren (Buf lines) State{curx,cury,offx,offy,screenRows,screenCols} =
   home ++
   intercalate "\r\n" [ take screenCols (drop offx line) ++ clearRestOfLine
-                     | line <- take screenRows (drop offy lines)
+                     | line <- take screenRows (drop offy lines ++ repeat "")
                      ]
   ++ moveCursorTo curx cury
