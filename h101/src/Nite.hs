@@ -8,11 +8,11 @@ import System.Posix.IO (stdInput)
 import System.Posix.Terminal (TerminalAttributes,TerminalMode(..),TerminalState(..),getTerminalAttributes,setTerminalAttributes,withoutMode)
 import Text.Printf (printf)
 
---import Control.Exception (try,SomeException)
---import Data.ByteString qualified as BS (unpack)
---import System.Posix.Terminal (withTime,withMinInput)
---import Data.ByteString.Internal (w2c)
---import System.Posix.IO.ByteString (fdRead)
+import Control.Exception (try,SomeException)
+import Data.ByteString qualified as BS (unpack)
+import System.Posix.Terminal (withTime,withMinInput)
+import Data.ByteString.Internal (w2c)
+import System.Posix.IO.ByteString (fdRead)
 
 import System.IO qualified as IO (stdout)
 import System.IO (hFlush,hPutStr)
@@ -62,7 +62,7 @@ main = do
       , offx = 0
       , offy = 0
       , buf
-      , debug = False
+      , debug = True
       }
   let
     loop state = do
@@ -114,7 +114,7 @@ composit state = ren (bufOfState state) state
 
 seeRecentKey :: Int -> State -> String
 seeRecentKey i State{frameNum,lastKeys} = do
-  let (n,key) = head (drop i (zip [frameNum,frameNum-1..] (lastKeys ++ repeat NoKey)))
+  let (n,key) = head (drop i (zip [frameNum,frameNum-1..] lastKeys)) -- state why head is safe
   printf "%d: %s" n (show key)
 
   where head = \case [] -> error "head"; x:_ -> x
@@ -140,7 +140,7 @@ putOut s = do
 processKey :: State -> Key -> Maybe State
 processKey state@State{lastKeys} key =
   case key of
-    Key 'q' -> Nothing
+    Key 'q' -> Nothing -- TODO: also hook on Ctr-C ?
     key -> do
       state <- pure $ state { lastKeys = key : lastKeys }
       let action = keyBinding key
@@ -163,12 +163,20 @@ data Action
   | Home
   | End
 
+-- TODO: handle PgUp/PgDn on number pad
+-- TODO: handle Ctrl- and Shift- arrow and other special keys
 keyBinding :: Key -> Action
 keyBinding = \case
-  Key 'a' -> CurLeft
-  Key 'd' -> CurRight
-  Key 'w' -> CurUp
-  Key 's' -> CurDown
+  EscapeOpenSquare (Just (Key 'A')) -> CurUp
+  EscapeOpenSquare (Just (Key 'B')) -> CurDown
+  EscapeOpenSquare (Just (Key 'C')) -> CurRight
+  EscapeOpenSquare (Just (Key 'D')) -> CurLeft
+  EscapeOpenSquare (Just (Key 'H')) -> Home
+  EscapeOpenSquare (Just (Key 'F')) -> End
+  --Key 'a' -> CurLeft
+  --Key 'd' -> CurRight
+  --Key 'w' -> CurUp
+  --Key 's' -> CurDown
   Key 'j' -> OffLeft
   Key 'l' -> OffRight
   Key 'i' -> OffUp
@@ -177,8 +185,8 @@ keyBinding = \case
   Escape '<' -> Home
   Escape '>' -> End
   k@(Key _) -> IgnoreKey k
-  k@NoKey -> IgnoreKey k
   k@(Escape _) -> IgnoreKey k
+  k@(EscapeOpenSquare{}) -> IgnoreKey k
 
 processAction :: State -> Action -> State
 processAction s@State{offx,offy,curx,cury,screenRows,screenCols,debug} = \case
@@ -220,8 +228,8 @@ enableRawMode = do
     , MapCRtoLF -- ICRNL (fixes Ctrl-M and [Enter])
     , ProcessOutput -- OPOST (we must output carriage return (\r) before newline (\n))
     ]
---  ta <- pure $ withTime ta 1 -- allow readKey to return NoKey
---  ta <- pure $ withMinInput ta 0 -- no effect
+  ta <- pure $ withTime ta 2 -- allow fdRead to timeout (timeout specified in 1/10s of a second)
+  ta <- pure $ withMinInput ta 0 -- no effect; default?
   setTerminalAttributes stdInput ta WhenFlushed
   pure taOrig
 
@@ -231,34 +239,54 @@ disableRawMode ta = do
 
 readKey :: IO Key
 readKey = do
-  c <- getChar
-  case c of
-    '\x1b' -> do
-      c <- getChar
-      pure (Escape c)
-    _ -> do
-      pure (Key c)
+  readKeyOpt >>= \case
+    Just k -> pure k
+    Nothing -> readKey -- drop the read timeouts
 
-{-readKey :: IO Key
-readKey = do
+readKeyOpt :: IO (Maybe Key) -- detect escape-[
+readKeyOpt = do
+  readKey1 >>= \case
+    Just (Escape '[') -> do
+      readKey1 >>= \case
+        k -> pure (Just (EscapeOpenSquare k))
+    Just k -> pure (Just k)
+    Nothing -> pure Nothing
+
+
+readKey1 :: IO (Maybe Key) -- detect escape
+readKey1 = do
+  readCharMaybe >>= \case
+    Just '\x1b' -> do
+      readCharMaybe >>= \case
+        Just c -> pure (Just (Escape c))
+        Nothing -> pure (Just (Key '\x1b'))
+    Just c -> do
+      pure (Just (Key c))
+    Nothing -> do
+      pure Nothing
+
+
+readCharMaybe :: IO (Maybe Char)
+readCharMaybe = do
   try (fdRead stdInput 1) >>= \case
-    Left (_e::SomeException) -> pure NoKey
+    Left (_e::SomeException) -> pure Nothing
     Right bs ->
       case BS.unpack bs of
-        [] -> pure NoKey
-        [c] -> pure (Key (w2c c))
-        _ -> error "readKey/>1"-}
+        [] -> undefined --pure Nothing
+        [c] -> pure (Just (w2c c))
+        _ -> error "getCharMaybe/>1"
 
-data Key = NoKey | Key Char | Escape Char
+
+data Key = Key Char | Escape Char | EscapeOpenSquare (Maybe Key)
 
 instance Show Key where
   show = \case
-    NoKey -> "[NoKey]"
     Escape c -> "(escape) " ++ show (Key c)
+    EscapeOpenSquare k -> "(escape-[) " ++ show k
     Key c ->
       if isControl c
-      then printf "%x" (ord c)
-      else printf "%x ('%c')" (ord c) c
+      then printf "%02x" (ord c)
+      else printf "%02x ('%c')" (ord c) c
 
 ----------------------------------------------------------------------
 
@@ -275,7 +303,7 @@ bufOfState state@State{debug,buf,frameNum,curx,cury,screenRows,screenCols} =
     square =
       [ printf "[#frames:%d, curx=%d, cury=%d, col=%d, rows=%d]" frameNum curx cury screenCols screenRows ]
       ++
-      [ seeRecentKey i state | i <- [0..frameNum] ]
+      [ seeRecentKey i state | i <- [0..frameNum-1] ]
 
 ren :: Buf -> State -> String
 ren (Buf lines) State{curx,cury,offx,offy,screenRows,screenCols} =
