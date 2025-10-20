@@ -22,6 +22,7 @@ import qualified PrepGreen
 import qualified Fork
 import qualified Green
 import qualified Nite
+import qualified Dft
 
 main :: IO ()
 main = do
@@ -46,5 +47,6 @@ main = do
   let _ = PrepGreen.main
   let _ = Fork.main
   let _ = Green.main
-  Nite.main
+  let _ = Nite.main
+  Dft.main
   pure ()
