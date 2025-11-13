@@ -1,10 +1,5 @@
 
-names:
-  echo harmony > names
+ocaml.modules:
+  echo harmony >> ocaml.modules
 
-# TODO: move into jenga
-include ../../explore-specialization/peval/ocaml/ocaml.rules
-
-# make this optional extra flags
-ocaml.flags:
-  echo '-w @1..3@5..28@31..39@43@46..47@49..57@61..62@67@69-40 -strict-sequence -strict-formats -short-paths -keep-locs -g -no-alias-deps -opaque -bin-annot -intf-suffix .ml' > ocaml.flags
+include /home/nic/code/jenga/rulelib/ocaml.rules
