@@ -1,6 +1,6 @@
 
 ocaml.modules : : echo play >> $@
 
-include /home/nic/code/jenga/rulelib/ocaml.rules
+include ~/code/jenga/rulelib/ocaml.rules
 
 ocaml.xflags :: echo '-w -32-8' > $@
