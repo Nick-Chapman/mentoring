@@ -1,31 +1,30 @@
 
 executable-name:
-  echo play.exe > executable-name
+  echo play.exe > $@
 
 include ../../../jenga/rulelib/haskell.jenga
 
 main-entry:
-  echo Top > main-entry
+  echo Top > $@
 
 ghc-version:
-  echo 9.8.4 > ghc-version
+  echo 9.8.4 > $@
 
 ghc-options:
-  echo -Werror >>ghc-options
-  echo -Wall >>ghc-options
-  echo -Wno-name-shadowing >>ghc-options
+  echo -Werror >> $@
+  echo -Wall >> $@
+  echo -Wno-name-shadowing >> $@
 
 default-extensions:
-  echo LambdaCase >>default-extensions
-  echo DuplicateRecordFields >>default-extensions
-  echo GADTs >>default-extensions
-  echo NondecreasingIndentation >>default-extensions
+  echo LambdaCase >> $@
+  echo DuplicateRecordFields >> $@
+  echo GADTs >> $@
+  echo NondecreasingIndentation >> $@
 
 packages:
-  touch packages
-  echo bytestring >> packages
-  echo clock >> packages
-  echo data-ordlist >> packages
-  echo mtl >> packages
-  echo process >> packages
-  echo unix >> packages
+  echo bytestring >> $@
+  echo clock >> $@
+  echo data-ordlist >> $@
+  echo mtl >> $@
+  echo process >> $@
+  echo unix >> $@

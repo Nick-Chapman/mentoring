@@ -1,5 +1,5 @@
 
 ocaml.modules:
-  echo harmony >> ocaml.modules
+  echo harmony > $@
 
 include ~/code/jenga/rulelib/ocaml.jenga
