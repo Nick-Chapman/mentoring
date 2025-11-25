@@ -1,0 +1,5 @@
+
+include ../go.jenga
+
+utils.a: compile.sh compile.cfg go.files @go.files
+  ./compile.sh -o $@ -p top.exe/myutils $(cat go.files)

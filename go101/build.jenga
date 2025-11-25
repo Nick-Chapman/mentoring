@@ -1,0 +1,11 @@
+
+*run: top.exe
+  ./top.exe
+
+top.exe : link.cfg main.a myutils/utils.a
+  /usr/local/go/pkg/tool/linux_amd64/link -o $@ -importcfg link.cfg main.a
+
+include go.jenga
+
+main.a: compile.sh compile.cfg go.files @go.files myutils/utils.a
+  ./compile.sh -o $@ -p main $(cat go.files)

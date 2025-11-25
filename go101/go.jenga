@@ -1,0 +1,7 @@
+
+go.files: all.files
+  egrep '^[^#]+.go' all.files > $@
+
+compile.sh :
+  echo 'exec /usr/local/go/pkg/tool/linux_amd64/compile -importcfg compile.cfg "$$@"' > $@
+  chmod +x $@
