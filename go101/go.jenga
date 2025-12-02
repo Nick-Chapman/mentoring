@@ -1,4 +1,6 @@
 
+all.files : : echo '$glob' > $@
+
 go.files: all.files
   egrep '^[^#]+.go' all.files > $@
 
