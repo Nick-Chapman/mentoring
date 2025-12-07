@@ -8,4 +8,4 @@ top.exe : link.cfg main.a myutils/utils.a
 include go.jenga
 
 main.a: compile.sh compile.cfg go.files @go.files myutils/utils.a
-  ./compile.sh -o $@ -p main $(cat go.files)
+  ./compile.sh -o $@ -p main $$(cat go.files)
