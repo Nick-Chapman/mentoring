@@ -8,7 +8,7 @@ main-entry:
   echo Top > $@
 
 ghc-version:
-  echo 9.8.4 > $@
+  echo 9.10.3 > $@
 
 ghc-options:
   echo -Werror >> $@
