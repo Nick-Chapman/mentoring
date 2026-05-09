@@ -12,20 +12,17 @@ class MonadTrans t where
 main :: IO ()
 main = do
   putStrLn "**Poor Man's Concurrency"
-  let s :: String = runW (runC example)
-  putStrLn s
+  putStrLn $ take 70 $ runW $ runC example
   putStrLn "**DONE"
-  pure ()
 
 example :: Writer m => C m ()
 example = do
   write "start"
-  fork (loop 7 ".fish")
-  loop (-5) ".cat"
-  -- Change to (-5) -- we see no output. either W or C is not lazy enough
+  fork (loop ".fish")
+  loop ".cat"
 
-loop :: Writer m => Int -> String -> C m () -- negative gives infinite loop
-loop i s = if i == 0 then pure () else do write s; loop (i-1) s
+loop :: Writer m => String -> m ()
+loop s = do write s; loop s
 
 
 data W a = W a String
@@ -59,9 +56,6 @@ instance Writer m => Writer (C m) where
   -- character interleaving
   --write = \case [] -> pure (); x:xs -> do lift (write [x]); write xs
 
-  -- provoke error in version of atom which uses Atom2
-  -- write s = do b <- lift (do write s; pure True); if b then pure () else undefined
-
 instance MonadTrans C where
   lift = atom
 
@@ -73,8 +67,7 @@ actionC :: Monad m => C m () -> Action m
 actionC c = appC c $ \() -> Stop
 
 atom :: Monad m => m a -> C m a
-atom m = C $ \k -> Atom1 (do a <- m; pure (k a)) -- This is very tricksy
---atom m = C $ \k -> Atom2 (do _a <- m; pure ()) (k undefined)
+atom m = C $ \k -> Atom1 (do a <- m; pure (k a))
 
 -- _stop :: Monad m => C m a
 -- _stop = C $ \_k -> Stop
@@ -89,8 +82,7 @@ fork c = C $ \k -> Fork (actionC c) (k ())
 data Action m
   = Stop
   | Fork (Action m) (Action m)
-  | Atom1 (m (Action m)) -- This type is confusing for me.
---  | Atom2 (m ()) (Action m) -- can't wrte lift
+  | Atom1 (m (Action m))
 
 round_robin :: Monad m => [Action m] -> m ()
 round_robin = \case
@@ -103,7 +95,3 @@ round_robin = \case
     Atom1 m -> do
       act <- m
       round_robin (acts ++ [act])
-
-    --Atom2 m act -> do
-    --  m
-    --  round_robin (acts ++ [act])
