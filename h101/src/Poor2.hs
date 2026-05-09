@@ -33,17 +33,17 @@ main = do
 example :: Writer m => C m ()
 example = do
   write "start"
-  spawn (loop ".fish")
-  loop ".cat"
+  spawn (forever ".fish")
+  forever ".cat"
 
 spawn :: C m () -> C m ()
---spawn = Spawn
---spawn c = Fork c (pure ())
-spawn c = Fork (do c; Stop) (pure ())
+--spawn = Spawn -- primitive spawn
+--spawn c = Fork c (pure ()) -- wrong: missing stop!
+spawn c = Fork (do c; Stop) (pure ()) -- spawn in terms of Fork/Stop
 
-loop :: Writer m => String -> m ()
-loop s = do write s; loop s
---loop s = do write s; write s; write s
+forever :: Writer m => String -> m ()
+forever s = do write s; forever s
+--forever s = do write s; write s; write s
 
 
 instance Functor (C m) where fmap = liftM
@@ -60,9 +60,59 @@ data C m a where
   Fork :: C m a -> C m a -> C m a
   Stop :: C m a
 
-
 runC :: forall m. Monad m => C m () -> m ()
-runC c = round_robin [loop c kStop]
+runC c = loop c (State []) kStop
+
+kStop :: Monad m => () -> State m -> m ()
+kStop = \() s -> resume s
+
+loop :: Monad m => C m a -> State m -> (a -> State m -> m ()) -> m ()
+loop c s k = case c of
+
+  Pure a -> do
+    k a s
+
+  Bind c f -> do
+    loop c s $ \a s -> loop (f a) s k
+
+  Lift m -> do
+    a <- m
+    switch k a s
+
+  Spawn c -> do
+    {-switch-} k () (yield (\s -> loop c s kStop) s)
+
+  Fork c1 c2 -> do -- duplicates k
+    {-let this s = loop c1 s k
+    let that s = loop c2 s k
+    resume $ (yield this . yield that) s-}
+    let s' = yield (\s -> loop c1 s k) s
+    loop c2 s' k
+
+  Stop -> do -- ignores k
+    resume s
+
+data State m = State [Cont m] -- use two lists to avoid tail-append in yield
+type Cont m = State m -> m ()
+
+switch :: Monad m => (a -> State m -> m ()) -> a -> State m -> m ()
+--switch k a s = k a s -- dont switch
+switch k a s = resume (yield (k a) s)
+
+yield :: (State m -> m ()) -> State m -> State m
+yield k (State ks) = State (ks++[k]) -- round robin
+
+resume :: Monad m => State m -> m ()
+resume (State ks) = case ks of
+  [] -> pure () -- we're done
+  k:ks -> k (State ks)
+
+
+
+{-
+
+_v1_runC :: forall m. Monad m => C m () -> m ()
+_v1_runC c = round_robin [loop c kStop]
   where
     kStop () = AStop
 
@@ -97,3 +147,5 @@ round_robin = \case
     AAtom m -> do
       act <- m
       round_robin (acts ++ [act])
+
+-}
