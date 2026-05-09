@@ -24,6 +24,7 @@ import qualified Green
 import qualified Nite
 import qualified Dft
 import qualified Poor
+import qualified Poor2
 
 main :: IO ()
 main = do
@@ -50,5 +51,6 @@ main = do
   let _ = Green.main
   let _ = Nite.main
   let _ = Dft.main
-  Poor.main
+  let _ = Poor.main
+  Poor2.main
   pure ()
