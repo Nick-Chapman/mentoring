@@ -21,7 +21,7 @@ example :: Writer m => C m ()
 example = do
   write "start"
   fork (loop 7 ".fish")
-  loop (5) ".cat"
+  loop (-5) ".cat"
   -- Change to (-5) -- we see no output. either W or C is not lazy enough
 
 loop :: Writer m => Int -> String -> C m () -- negative gives infinite loop
@@ -41,7 +41,7 @@ instance Writer W where
   write s = W () s
 
 runW :: W () -> String
-runW = \case W () s -> s
+runW = \case W _ s -> s
 
 
 data C m a = C { appC :: ((a -> Action m) -> Action m) }
